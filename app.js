@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.5.0';
+var APP_VERSION = 'v1.5.1';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -362,11 +362,11 @@ function renderHome() {
       var nearest = scheduled[0];
       var diff = Math.ceil((new Date(nearest.scheduledDate) - new Date(toDay())) / 86400000);
       var ddayTxt = diff === 0 ? '<span style="color:var(--dg)">오늘!</span>' : 'D-' + diff;
-      h += '<div class="dcard"><div class="dcard-label">다가오는 예약</div>' +
+      h += '<div class="dcard" id="dcard-sched" style="cursor:pointer"><div class="dcard-label">다가오는 예약</div>' +
         '<div class="dcard-val">' + ddayTxt + '</div>' +
         '<div class="dcard-sub">' + esc(nearest.name) + (scheduled.length > 1 ? ' 외 ' + (scheduled.length - 1) + '개' : '') + '</div></div>';
     } else {
-      h += '<div class="dcard"><div class="dcard-label">다가오는 예약</div>' +
+      h += '<div class="dcard" id="dcard-sched" style="cursor:pointer"><div class="dcard-label">다가오는 예약</div>' +
         '<div class="dcard-val" style="font-size:1.1rem;color:var(--tx2)">없음</div>' +
         '<div class="dcard-sub">일회성 예약이 없어요</div></div>';
     }
@@ -375,11 +375,11 @@ function renderHome() {
     insts.forEach(function(inst) { if (inst.type === 'oneTime') onceCount++; });
 
     if (onceCount > 0) {
-      h += '<div class="dcard"><div class="dcard-label">오늘 추가 준비물</div>' +
+      h += '<div class="dcard" id="dcard-once" style="cursor:pointer"><div class="dcard-label">오늘 추가 준비물</div>' +
         '<div class="dcard-val" style="color:#EA580C">' + onceCount + '개</div>' +
         '<div class="dcard-sub">일회성 리스트</div></div>';
     } else {
-      h += '<div class="dcard"><div class="dcard-label">오늘 추가 준비물</div>' +
+      h += '<div class="dcard" id="dcard-once" style="cursor:pointer"><div class="dcard-label">오늘 추가 준비물</div>' +
         '<div class="dcard-val" style="font-size:1.1rem;color:var(--tx2)">추가 없음</div>' +
         '<div class="dcard-sub">고정 리스트만</div></div>';
     }
@@ -399,7 +399,7 @@ function renderHome() {
       h += '<div class="empty"><div class="empty-ico">' + ICONS.clipboard + '</div><p>오늘 사용할 리스트가 없어요<br>+ 버튼을 눌러 추가해보세요</p></div>';
     } else {
       if (pending.length) {
-        h += '<div class="stn">미완료</div><div class="lc">';
+        h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center">미완료<span style="font-size:.65rem;font-weight:500;color:var(--tx2);text-transform:none;letter-spacing:0">길게 누르면 삭제</span></div><div class="lc">';
         pending.forEach(function(inst) {
           var tot = inst.items.length;
           var dn = inst.items.filter(function(i) { return i.checked; }).length;
@@ -471,8 +471,22 @@ function renderHome() {
         ico.classList.toggle('open', !isOpen);
       });
     }
+
+    var dcSched = document.getElementById('dcard-sched');
+    if (dcSched) dcSched.addEventListener('click', function() { goToSeg('oneTime'); });
+    var dcOnce = document.getElementById('dcard-once');
+    if (dcOnce) dcOnce.addEventListener('click', function() { goToSeg('oneTime'); });
+
     updateFab();
   });
+}
+
+function goToSeg(seg) {
+  curSeg = seg;
+  document.querySelectorAll('.sb').forEach(function(b) {
+    b.classList.toggle('on', b.dataset.seg === seg);
+  });
+  switchTab('list');
 }
 
 function renderList() {
@@ -1039,12 +1053,16 @@ function updateFab() {
   fab.style.display = 'flex';
 }
 
-function switchTab(tab) {
+function switchTab(tab, fromPop) {
+  var prevTab = curTab;
   document.querySelectorAll('.tp').forEach(function(p) { p.classList.remove('on'); });
   document.querySelectorAll('.tbb').forEach(function(b) { b.classList.remove('on'); });
   document.getElementById(tab + 'Tab').classList.add('on');
   document.querySelector('.tbb[data-tab="' + tab + '"]').classList.add('on');
   curTab = tab;
+  if (tab !== 'home' && prevTab === 'home' && !fromPop) {
+    history.pushState({layer: 'tab'}, '');
+  }
   if (tab === 'home') renderHome();
   else if (tab === 'list') renderList();
   else renderSettings();
@@ -1122,7 +1140,7 @@ function bindEvents() {
     if (isDlgOpen()) { closeDlg(); return; }
     if (isSheetOpen()) { closeSheet(); return; }
     if (isCheckOpen()) { closeCheck(); return; }
-    if (curTab !== 'home') { switchTab('home'); return; }
+    if (curTab !== 'home') { switchTab('home', true); return; }
   });
 
   var tc = document.getElementById('tc');
@@ -1150,6 +1168,8 @@ function injectTabIcons() {
   document.getElementById('csbk').innerHTML = ICONS.arrowLeft;
   document.querySelector('.fab').innerHTML = ICONS.plus;
   document.getElementById('csrst').innerHTML = ic('rotateLeft') + ' 초기화';
+  var titleEl = document.getElementById('appTitle');
+  if (titleEl) titleEl.innerHTML = '내일<span style="display:inline-flex;width:1.2rem;height:1.2rem;vertical-align:middle;margin:0 1px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--pr)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>체크';
 }
 
 function registerSW() {

@@ -482,10 +482,11 @@ html, body {
 
 .tgl.on::after { transform: translateX(20px); }
 
-.fsbtns { display: flex; gap: 6px; }
+.fsbtns { display: flex; gap: 6px; width: 100%; }
 
 .fsbtn {
-  padding: 7px 14px;
+  flex: 1;
+  padding: 10px 4px;
   border-radius: 8px;
   border: 1.5px solid var(--bd);
   background: transparent;
@@ -494,15 +495,16 @@ html, body {
   color: var(--tx2);
   transition: all .2s;
   font-size: .875rem;
+  text-align: center;
 }
 
 .fsbtn.on { border-color: var(--pr); color: var(--pr); background: var(--prl); }
 
-.cpal { display: flex; gap: 10px; flex-wrap: wrap; }
+.cpal { display: flex; justify-content: space-between; width: 100%; }
 
 .cdot {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   cursor: pointer;
   border: 2.5px solid transparent;
@@ -774,5 +776,43 @@ html, body {
 .lc { margin: 8px 16px 0; }
 .ver { text-align: center; padding: 24px; color: var(--tx2); font-size: .78rem; font-weight: 600; }
 .seln { width: auto; padding: 6px 12px; border-radius: 8px; }
+
+.bgpal { display: flex; justify-content: space-between; width: 100%; }
+
+.bgdot {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2.5px solid transparent;
+  transition: transform .2s, border-color .2s;
+  position: relative;
+}
+
+.bgdot.on { border-color: var(--tx); transform: scale(1.15); }
+.bgdot.on::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--sf); }
+
+.csf-btns { display: flex; flex-direction: column; gap: 8px; }
+
+.btn-quick {
+  width: 100%;
+  padding: 18px 20px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 800;
+  background: var(--pr);
+  color: #fff;
+  transition: opacity .15s, transform .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-quick:active { opacity: .8; transform: scale(.98); }
+.btn-quick:disabled { opacity: .4; pointer-events: none; }
+.btn-quick svg { width: 1.2rem; height: 1.2rem; }
 
 ::-webkit-scrollbar { display: none; }

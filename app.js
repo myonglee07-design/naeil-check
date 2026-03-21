@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.1.0';
+var APP_VERSION = 'v1.2.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -27,8 +27,11 @@ var DEFAULT_TMPLS = [
   {name:'병원 방문 준비', type:'oneTime', items:['신분증','병원 예약 확인','진료 관련 서류','복용 중인 약 정보','결제 수단','휴대폰 충전','물','아이 동반 시 간식']}
 ];
 
-var LIGHT_COLORS = ['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EC4899'];
-var DARK_COLORS = ['#60A5FA','#34D399','#A78BFA','#FCD34D','#FB7185'];
+var LIGHT_COLORS = ['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EC4899','#EF4444','#06B6D4'];
+var DARK_COLORS = ['#60A5FA','#34D399','#A78BFA','#FCD34D','#FB7185','#F87171','#22D3EE'];
+var BG_LIGHT = ['','#FFF1F2','#FEF9C3','#DCFCE7','#DBEAFE','#F3E8FF','#FFF7ED','#E0F2FE'];
+var BG_DARK = ['','#1A1A2E','#1B2A3D','#1A2E1A','#2D1B3E','#2A1F1F','#1F2A2A','#2A2519'];
+var BG_LABELS = ['기본','로즈','레몬','민트','스카이','라벤더','피치','아이스'];
 var FONT_SIZES = {sm: 14, md: 16, lg: 19, xl: 22};
 
 var db = null;
@@ -611,6 +614,32 @@ function drawCheck() {
   csb.querySelectorAll('.ci').forEach(function(c) {
     c.addEventListener('click', function() { toggleItem(c.dataset.id); });
   });
+
+  var qBtn = document.getElementById('csqck');
+  if (qBtn) {
+    var next = nextUnchecked();
+    if (next) {
+      qBtn.disabled = false;
+      qBtn.textContent = '✓  ' + next.text;
+    } else {
+      qBtn.disabled = true;
+      qBtn.textContent = '모두 완료!';
+    }
+  }
+}
+
+function nextUnchecked() {
+  if (!curInst) return null;
+  var sorted = curInst.items.slice().sort(function(a, b) { return a.sortOrder - b.sortOrder; });
+  for (var i = 0; i < sorted.length; i++) {
+    if (!sorted[i].checked) return sorted[i];
+  }
+  return null;
+}
+
+function quickCheck() {
+  var item = nextUnchecked();
+  if (item) toggleItem(item.id);
 }
 
 function toggleItem(itemId) {
@@ -673,6 +702,13 @@ function renderSettings() {
     return '<button class="fsbtn ' + (cfg.fontSize === k ? 'on' : '') + '" data-sz="' + k + '">' + k.toUpperCase() + '</button>';
   }).join('');
 
+  var bgColors = isDk ? BG_DARK : BG_LIGHT;
+  var bgdots = bgColors.map(function(c, i) {
+    var active = cfg.bgColor === c ? 'on' : '';
+    var bg = c || (isDk ? '#0F172A' : '#F8FAFC');
+    return '<div class="bgdot ' + active + '" style="background:' + bg + ';border:2.5px solid ' + (active ? 'var(--tx)' : 'var(--bd)') + '" data-bg="' + c + '" title="' + BG_LABELS[i] + '"></div>';
+  }).join('');
+
   document.getElementById('scnt').innerHTML =
     '<div class="sgrp"><div class="sgrp-title">테마</div><div class="sgrp-body">' +
     '<div class="srow"><div class="srow-lbl">다크 모드</div><button class="tgl ' + (isDk ? 'on' : '') + '" id="tgBtn"></button></div></div></div>' +
@@ -681,10 +717,7 @@ function renderSettings() {
     '<div class="sgrp"><div class="sgrp-title">포인트 색상</div><div class="sgrp-body">' +
     '<div class="srow"><div class="cpal">' + cdots + '</div></div></div></div>' +
     '<div class="sgrp"><div class="sgrp-title">배경색</div><div class="sgrp-body">' +
-    '<div class="srow"><div class="srow-lbl">배경색 선택<span>직접 지정할 수 있어요</span></div>' +
-    '<input type="color" id="bgPick" value="' + (cfg.bgColor || '#F8FAFC') + '" style="width:36px;height:36px;border:none;border-radius:50%;cursor:pointer;background:none;padding:2px;flex-shrink:0"></div>' +
-    '<div class="srow" id="bgRst" style="cursor:pointer"><div class="srow-lbl">배경색 초기화</div>' +
-    '<span style="display:inline-flex;width:1rem;height:1rem;color:var(--tx2)">' + ICONS.rotateLeft + '</span></div></div></div>' +
+    '<div class="srow"><div class="bgpal">' + bgdots + '</div></div></div></div>' +
     '<div class="sgrp"><div class="sgrp-title">보관 기간</div><div class="sgrp-body">' +
     '<div class="srow"><div class="srow-lbl">완료 리스트 보관</div>' +
     '<select class="sei seln" id="adSel">' +
@@ -721,14 +754,11 @@ function renderSettings() {
     });
   });
 
-  document.getElementById('bgPick').addEventListener('input', function(e) {
-    saveCfg('bgColor', e.target.value);
-  });
-
-  document.getElementById('bgRst').addEventListener('click', function() {
-    saveCfg('bgColor', '').then(function() {
-      toast('배경색 초기화됐습니다');
-      renderSettings();
+  document.querySelectorAll('.bgdot').forEach(function(d) {
+    d.addEventListener('click', function() {
+      saveCfg('bgColor', d.dataset.bg).then(function() {
+        renderSettings();
+      });
     });
   });
 
@@ -916,6 +946,10 @@ function bindEvents() {
 
   document.getElementById('csbk').addEventListener('click', function() {
     closeCheckAndBack();
+  });
+
+  document.getElementById('csqck').addEventListener('click', function() {
+    quickCheck();
   });
 
   document.getElementById('csrst').addEventListener('click', function() {

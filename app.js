@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.4.0';
+var APP_VERSION = 'v1.5.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -46,7 +46,6 @@ var curTab = 'home';
 var curSeg = 'fixed';
 var curInst = null;
 var _lpTimer = null;
-var _lpActive = false;
 var swX = 0;
 var swY = 0;
 var _skipPop = false;
@@ -429,11 +428,37 @@ function renderHome() {
     el.innerHTML = h;
 
     el.querySelectorAll('.hcard').forEach(function(c) {
+      var _ht = null;
       c.addEventListener('click', function() {
+        if (_ht) return;
         dGet('instances', c.dataset.id).then(function(inst) {
           if (inst) openCheck(inst);
         });
       });
+      c.addEventListener('touchstart', function(e) {
+        var sid = c.dataset.id;
+        _ht = setTimeout(function() {
+          _ht = null;
+          if (navigator.vibrate) navigator.vibrate(40);
+          dlg('리스트 삭제', '이 리스트를 오늘 목록에서 삭제할까요?', [
+            {label: '취소', val: false, cls: 'bc'},
+            {label: '삭제', val: true, cls: 'bd2'}
+          ]).then(function(ok) {
+            if (ok) {
+              dDel('instances', sid).then(function() {
+                toast('삭제됐습니다');
+                renderHome();
+              });
+            }
+          });
+        }, 500);
+      }, {passive: true});
+      c.addEventListener('touchend', function() {
+        if (_ht) { clearTimeout(_ht); _ht = null; }
+      }, {passive: true});
+      c.addEventListener('touchmove', function() {
+        if (_ht) { clearTimeout(_ht); _ht = null; }
+      }, {passive: true});
     });
 
     var togBtn = document.getElementById('togBtn');
@@ -618,7 +643,6 @@ function closeCheck() {
   if (!el.classList.contains('on')) return;
   el.classList.remove('on');
   curInst = null;
-  _lpActive = false;
   renderHome();
 }
 
@@ -635,102 +659,106 @@ function drawCheck() {
   var dn = inst.items.filter(function(i) { return i.checked; }).length;
   var pc = tot > 0 ? Math.round(dn / tot * 100) : 0;
 
-  document.getElementById('cspr').textContent = _lpActive ? '편집 중' : (dn + '/' + tot);
+  document.getElementById('cspr').textContent = dn + '/' + tot;
 
-  var h = '';
-  if (!_lpActive) {
-    h += '<div class="cs-pbar"><div class="pbar"><div class="pfill" style="width:' + pc + '%"></div></div></div>';
-    h += '<div style="text-align:center;padding:4px 0 8px;font-size:.7rem;color:var(--tx2)">길게 누르면 순서 변경</div>';
-  } else {
-    h += '<div style="text-align:center;padding:8px 0;font-size:.78rem;color:var(--pr);font-weight:700">↑↓ 순서 변경 모드 · 아무 곳 터치하면 종료</div>';
-  }
+  var h = '<div class="cs-pbar"><div class="pbar"><div class="pfill" style="width:' + pc + '%"></div></div></div>';
+  h += '<div style="text-align:center;padding:4px 0 8px;font-size:.7rem;color:var(--tx2)">길게 누르면 순서 변경</div>';
+
   var sorted = inst.items.slice().sort(function(a, b) { return a.sortOrder - b.sortOrder; });
-  sorted.forEach(function(item, idx) {
-    if (_lpActive) {
-      h += '<div class="ci" style="cursor:default">' +
-        '<span class="ci-txt" style="flex:1">' + esc(item.text) + '</span>' +
-        '<button class="ib mvup" data-id="' + item.id + '" ' + (idx === 0 ? 'style="opacity:.2;pointer-events:none"' : '') + '>' + ICONS.arrowUp + '</button>' +
-        '<button class="ib mvdn" data-id="' + item.id + '" ' + (idx === sorted.length - 1 ? 'style="opacity:.2;pointer-events:none"' : '') + '>' + ICONS.arrowDown + '</button></div>';
-    } else {
-      h += '<div class="ci ' + (item.checked ? 'ck' : '') + '" data-id="' + item.id + '">' +
-        '<div class="ci-circ"></div><span class="ci-txt">' + esc(item.text) + '</span></div>';
-    }
+  sorted.forEach(function(item) {
+    h += '<div class="ci ' + (item.checked ? 'ck' : '') + '" data-id="' + item.id + '">' +
+      '<div class="ci-circ"></div><span class="ci-txt">' + esc(item.text) + '</span></div>';
   });
 
   var csb = document.getElementById('csb');
   csb.innerHTML = h;
 
-  if (_lpActive) {
-    csb.querySelectorAll('.mvup').forEach(function(b) {
-      b.addEventListener('click', function(e) { e.stopPropagation(); moveItem(b.dataset.id, -1); });
+  var dragId = null;
+  var dragEl = null;
+  var startY = 0;
+
+  csb.querySelectorAll('.ci').forEach(function(c) {
+    c.addEventListener('click', function() {
+      if (_lpTimer || dragId) return;
+      toggleItem(c.dataset.id);
     });
-    csb.querySelectorAll('.mvdn').forEach(function(b) {
-      b.addEventListener('click', function(e) { e.stopPropagation(); moveItem(b.dataset.id, 1); });
-    });
-    csb.addEventListener('click', function(e) {
-      if (!e.target.closest('.mvup') && !e.target.closest('.mvdn')) {
-        _lpActive = false;
-        drawCheck();
+
+    c.addEventListener('touchstart', function(e) {
+      var cid = c.dataset.id;
+      _lpTimer = setTimeout(function() {
+        _lpTimer = null;
+        dragId = cid;
+        dragEl = c;
+        startY = e.touches[0].clientY;
+        c.classList.add('ci-drag');
+        if (navigator.vibrate) navigator.vibrate(40);
+      }, 450);
+      startY = e.touches[0].clientY;
+    }, {passive: true});
+
+    c.addEventListener('touchmove', function(e) {
+      if (_lpTimer) {
+        var moveD = Math.abs(e.touches[0].clientY - startY);
+        if (moveD > 10) { clearTimeout(_lpTimer); _lpTimer = null; }
       }
-    });
-  } else {
-    csb.querySelectorAll('.ci').forEach(function(c) {
-      c.addEventListener('click', function() {
-        if (_lpTimer) return;
-        toggleItem(c.dataset.id);
-      });
-      c.addEventListener('touchstart', function(e) {
-        _lpTimer = setTimeout(function() {
-          _lpTimer = null;
-          _lpActive = true;
-          if (navigator.vibrate) navigator.vibrate(40);
+      if (!dragId || c.dataset.id !== dragId) return;
+      var curY = e.touches[0].clientY;
+      var items = csb.querySelectorAll('.ci');
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].dataset.id === dragId) continue;
+        var rect = items[i].getBoundingClientRect();
+        var mid = rect.top + rect.height / 2;
+        if (curY < mid && rect.top < curY) {
+          swapOrder(dragId, items[i].dataset.id);
           drawCheck();
-        }, 500);
-      }, {passive: true});
-      c.addEventListener('touchend', function() {
-        if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
-      }, {passive: true});
-      c.addEventListener('touchmove', function() {
-        if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
-      }, {passive: true});
-    });
-  }
+          return;
+        }
+        if (curY > mid && curY < rect.bottom) {
+          swapOrder(dragId, items[i].dataset.id);
+          drawCheck();
+          return;
+        }
+      }
+    }, {passive: true});
+
+    c.addEventListener('touchend', function() {
+      if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+      if (dragId) {
+        dragId = null;
+        dragEl = null;
+        dPut('instances', curInst).then(function() {
+          drawCheck();
+        });
+      }
+    }, {passive: true});
+  });
 
   var qBtn = document.getElementById('csqck');
   if (qBtn) {
-    if (_lpActive) {
-      qBtn.style.display = 'none';
+    var next = nextUnchecked();
+    if (next) {
+      qBtn.disabled = false;
+      qBtn.textContent = '✓  ' + next.text;
     } else {
-      qBtn.style.display = '';
-      var next = nextUnchecked();
-      if (next) {
-        qBtn.disabled = false;
-        qBtn.textContent = '✓  ' + next.text;
-      } else {
-        qBtn.disabled = true;
-        qBtn.textContent = '모두 완료!';
-      }
+      qBtn.disabled = true;
+      qBtn.textContent = '모두 완료!';
     }
   }
 }
 
-function moveItem(itemId, dir) {
+function swapOrder(idA, idB) {
   if (!curInst) return;
-  var sorted = curInst.items.slice().sort(function(a, b) { return a.sortOrder - b.sortOrder; });
-  var idx = -1;
-  for (var i = 0; i < sorted.length; i++) {
-    if (sorted[i].id === itemId) { idx = i; break; }
+  var a = null, b = null;
+  for (var i = 0; i < curInst.items.length; i++) {
+    if (curInst.items[i].id === idA) a = curInst.items[i];
+    if (curInst.items[i].id === idB) b = curInst.items[i];
   }
-  if (idx < 0) return;
-  var newIdx = idx + dir;
-  if (newIdx < 0 || newIdx >= sorted.length) return;
-  var tmpOrder = sorted[idx].sortOrder;
-  sorted[idx].sortOrder = sorted[newIdx].sortOrder;
-  sorted[newIdx].sortOrder = tmpOrder;
-  dPut('instances', curInst).then(function() {
-    drawCheck();
+  if (a && b) {
+    var tmp = a.sortOrder;
+    a.sortOrder = b.sortOrder;
+    b.sortOrder = tmp;
     if (navigator.vibrate) navigator.vibrate(15);
-  });
+  }
 }
 
 function nextUnchecked() {

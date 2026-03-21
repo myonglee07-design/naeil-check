@@ -577,7 +577,7 @@ html, body {
 .cs-top { padding: 16px 16px 0; }
 .cs-pbar { padding: 0 16px; margin: 12px 0 4px; }
 
-.dth { padding: 16px 16px 10px; }
+.dth { padding: 16px 16px 10px; text-align: center; }
 .dth h2 { font-size: 1.45rem; font-weight: 800; letter-spacing: -.02em; }
 .dth p { font-size: .85rem; color: var(--tx2); margin-top: 3px; }
 
@@ -710,6 +710,8 @@ html, body {
   padding: 16px 14px;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
   min-height: 100px;
 }
 
@@ -791,6 +793,14 @@ html, body {
 
 .bgdot.on { border-color: var(--tx); transform: scale(1.15); }
 .bgdot.on::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--sf); }
+
+.ci-drag {
+  opacity: .85;
+  background: var(--prl);
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  z-index: 10;
+  position: relative;
+}
 
 .csf-btns { display: flex; flex-direction: column; gap: 8px; }
 

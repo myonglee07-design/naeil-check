@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>내일체크</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+  <div id="tc">
+    <div class="tp on" id="homeTab">
+      <div class="ph"><h1>내일체크</h1></div>
+      <div id="hcnt"></div>
+    </div>
+    <div class="tp" id="listTab">
+      <div class="ph"><h1>리스트 관리</h1></div>
+      <div class="sc" id="segBar">
+        <button class="sb on" data-seg="fixed">고정</button>
+        <button class="sb" data-seg="oneTime">일회성</button>
+        <button class="sb" data-seg="archive">보관함</button>
+      </div>
+      <div id="lcnt"></div>
+    </div>
+    <div class="tp" id="settingsTab">
+      <div class="ph"><h1>설정</h1></div>
+      <div id="scnt"></div>
+    </div>
+  </div>
+  <div id="tb">
+    <button class="tbb on" data-tab="home" id="tbHome">
+      <span class="tbi"></span><span>홈</span>
+    </button>
+    <button class="tbb" data-tab="list" id="tbList">
+      <span class="tbi"></span><span>리스트</span>
+    </button>
+    <button class="tbb" data-tab="settings" id="tbSets">
+      <span class="tbi"></span><span>설정</span>
+    </button>
+  </div>
+</div>
+
+<div id="cs">
+  <div id="csh">
+    <button class="ib" id="csbk"></button>
+    <h2 id="cstl"></h2>
+    <div id="cspr"></div>
+  </div>
+  <div id="csb"></div>
+  <div id="csf">
+    <button class="btn bte" id="csrst"></button>
+  </div>
+</div>
+
+<div id="cov">
+  <div id="covm">
+    <div class="cov-ico">✅</div>
+    <h2>다 챙기셨어요!</h2>
+    <p>출발하세요 🚀</p>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="mo">
+  <div id="ms">
+    <div class="sh"></div>
+    <div id="mc"></div>
+  </div>
+</div>
+
+<div id="do">
+  <div id="db">
+    <h3 id="dt"></h3>
+    <p id="dm"></p>
+    <div id="dbs" class="dlg-btns"></div>
+  </div>
+</div>
+
+<button class="fab" id="fab"></button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

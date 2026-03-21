@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.5.1';
+var APP_VERSION = 'v1.5.2';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -367,7 +367,7 @@ function renderHome() {
         '<div class="dcard-sub">' + esc(nearest.name) + (scheduled.length > 1 ? ' 외 ' + (scheduled.length - 1) + '개' : '') + '</div></div>';
     } else {
       h += '<div class="dcard" id="dcard-sched" style="cursor:pointer"><div class="dcard-label">다가오는 예약</div>' +
-        '<div class="dcard-val" style="font-size:1.1rem;color:var(--tx2)">없음</div>' +
+        '<div class="dcard-val" style="font-size:1.1rem;color:var(--pr);opacity:.5">없음</div>' +
         '<div class="dcard-sub">일회성 예약이 없어요</div></div>';
     }
 
@@ -380,7 +380,7 @@ function renderHome() {
         '<div class="dcard-sub">일회성 리스트</div></div>';
     } else {
       h += '<div class="dcard" id="dcard-once" style="cursor:pointer"><div class="dcard-label">오늘 추가 준비물</div>' +
-        '<div class="dcard-val" style="font-size:1.1rem;color:var(--tx2)">추가 없음</div>' +
+        '<div class="dcard-val" style="font-size:1.1rem;color:var(--pr);opacity:.5">추가 없음</div>' +
         '<div class="dcard-sub">고정 리스트만</div></div>';
     }
 
@@ -399,13 +399,14 @@ function renderHome() {
       h += '<div class="empty"><div class="empty-ico">' + ICONS.clipboard + '</div><p>오늘 사용할 리스트가 없어요<br>+ 버튼을 눌러 추가해보세요</p></div>';
     } else {
       if (pending.length) {
-        h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center">미완료<span style="font-size:.65rem;font-weight:500;color:var(--tx2);text-transform:none;letter-spacing:0">길게 누르면 삭제</span></div><div class="lc">';
+        h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center"><span style="border-bottom:2px solid var(--pr);padding-bottom:2px">미완료</span><span style="font-size:.65rem;font-weight:500;color:var(--tx2);text-transform:none;letter-spacing:0">길게 누르면 삭제</span></div><div class="lc">';
         pending.forEach(function(inst) {
           var tot = inst.items.length;
           var dn = inst.items.filter(function(i) { return i.checked; }).length;
           var pc = tot > 0 ? Math.round(dn / tot * 100) : 0;
           var tag = inst.type === 'fixed' ? '<span class="bdg bdg-fixed">고정</span>' : '<span class="bdg bdg-once">일회성</span>';
-          h += '<div class="hcard" data-id="' + inst.id + '">' +
+          var cardCls = inst.type === 'oneTime' ? 'hcard once-card' : 'hcard';
+          h += '<div class="' + cardCls + '" data-id="' + inst.id + '">' +
             '<div class="hcard-head"><h3>' + esc(inst.name) + '</h3>' + tag + '</div>' +
             '<div class="hcard-meta">' + dn + '/' + tot + ' 완료</div>' +
             '<div class="pbar"><div class="pfill" style="width:' + pc + '%"></div></div></div>';

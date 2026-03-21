@@ -137,10 +137,14 @@ html, body {
   border: 1px solid var(--bd);
   margin: 8px 16px 0;
   padding: 16px;
+  padding-left: 20px;
   cursor: pointer;
   transition: opacity .15s, transform .15s;
+  border-left: 4px solid var(--pr);
 }
 
+.hcard.once-card { border-left-color: #F59E0B; }
+.hcard.done { opacity: .55; border-left-color: var(--ok); }
 .hcard:active { opacity: .8; transform: scale(.99); }
 
 .hcard-head {
@@ -313,7 +317,7 @@ html, body {
   white-space: nowrap;
 }
 
-#cspr { font-size: .85rem; color: var(--tx2); font-weight: 600; white-space: nowrap; }
+#cspr { font-size: .85rem; color: var(--pr); font-weight: 600; white-space: nowrap; }
 
 #csb { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
@@ -718,7 +722,7 @@ html, body {
 .dcard-label {
   font-size: .72rem;
   font-weight: 700;
-  color: var(--tx2);
+  color: var(--pr);
   text-transform: uppercase;
   letter-spacing: .04em;
   margin-bottom: 8px;

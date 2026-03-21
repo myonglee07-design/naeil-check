@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.3.0';
+var APP_VERSION = 'v1.4.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -22,15 +22,20 @@ var ICONS = {
 };
 
 var DEFAULT_TMPLS = [
-  {name:'출근 준비', type:'fixed', items:['휴대폰','지갑','차키 / 집키','충전기 / 보조배터리','이어폰','물 / 텀블러','출근 복장 확인']},
-  {name:'차량 점검', type:'fixed', items:['연료 확인','타이어 이상 확인','차량 경고등 확인','거치대 / 충전 연결','차량 서류 확인','실내 정리']},
-  {name:'아이 외출 준비', type:'fixed', items:['물','휴지 / 물티슈','간식','여벌 옷','아이 신발 / 겉옷','장난감 / 심심풀이','상비약 / 밴드']},
-  {name:'여행 준비', type:'oneTime', items:['신분증','휴대폰 / 충전기','지갑 / 카드','옷 / 속옷','세면도구','상비약','숙소 예약 확인','교통편 확인','집 잠금 / 가스 확인','보조배터리']},
-  {name:'병원 방문 준비', type:'oneTime', items:['신분증','병원 예약 확인','진료 관련 서류','복용 중인 약 정보','결제 수단','휴대폰 충전','물','아이 동반 시 간식']}
+  {name:'출근 준비', type:'fixed', items:['출근복','사원증 / 출입증','칫솔 / 치약','텀블러','충전 케이블 / 어댑터','이어폰','보조배터리','휴대폰','지갑','집키 / 차키','우산']},
+  {name:'차량 점검', type:'fixed', items:['운전면허증','스마트키','타이어','계기판 경고등','연료','거치대','차량용 충전 케이블','하이패스 카드','차량 서류']},
+  {name:'아이 외출 준비', type:'fixed', items:['물','간식','휴지 / 물티슈','손수건','여벌 옷','손소독제','상비약 / 밴드','장난감','겉옷','모자','아이 신발']},
+  {name:'고등학생 등교', type:'fixed', items:['교과서 / 참고서','필기구','태블릿 / 스마트패드','보조배터리','교복 / 체육복','물통','휴대폰','학생증','교통카드','우산']},
+  {name:'유치원 등원', type:'fixed', items:['여벌 옷 / 양말','알림장','물통','간식','휴지 / 물티슈','손수건','유치원 가방','겉옷','아이 신발']},
+  {name:'여행 준비', type:'oneTime', items:['신분증 / 여권','항공권 / 교통편 예약정보','숙소 예약정보','휴대폰','충전 케이블 / 보조배터리','지갑 / 카드','현금','옷 / 속옷 / 양말','세면도구','상비약','자외선차단제','우산','현관문 잠금','가스밸브']},
+  {name:'병원 방문', type:'oneTime', items:['신분증','모바일 건강보험증','예약 정보','진료 관련 서류','처방전 / 복용 중인 약','결제 수단','휴대폰','보조배터리','물','간식']},
+  {name:'장보기 / 마트', type:'oneTime', items:['장보기 목록','장바구니 / 에코백','쿠폰 / 멤버십','결제 수단','휴대폰']},
+  {name:'공공기관 / 은행', type:'oneTime', items:['신분증','신청 서류 원본','발급번호 / 예약번호','도장','통장 / 카드','휴대폰','필기구']},
+  {name:'현장 근무', type:'fixed', items:['작업복','안전모','안전화','작업장갑','안전 조끼','마스크','보온병 / 물','수건','충전 케이블 / 보조배터리','휴대폰','지갑','신분증 / 출입증']}
 ];
 
-var LIGHT_COLORS = ['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EC4899','#EF4444','#06B6D4'];
-var DARK_COLORS = ['#60A5FA','#34D399','#A78BFA','#FCD34D','#FB7185','#F87171','#22D3EE'];
+var LIGHT_COLORS = ['#93C5FD','#86EFAC','#C4B5FD','#FCD34D','#FBCFE8','#FCA5A5','#67E8F9'];
+var DARK_COLORS = ['#60A5FA','#34D399','#A78BFA','#FBBF24','#F9A8D4','#FCA5A5','#22D3EE'];
 var BG_LIGHT = ['','#FFF1F2','#FEF9C3','#DCFCE7','#DBEAFE','#F3E8FF','#FFF7ED','#E0F2FE'];
 var BG_DARK = ['','#1A1A2E','#1B2A3D','#1A2E1A','#2D1B3E','#2A1F1F','#1F2A2A','#2A2519'];
 var BG_LABELS = ['기본','로즈','레몬','민트','스카이','라벤더','피치','아이스'];
@@ -40,7 +45,8 @@ var db = null;
 var curTab = 'home';
 var curSeg = 'fixed';
 var curInst = null;
-var editMode = false;
+var _lpTimer = null;
+var _lpActive = false;
 var swX = 0;
 var swY = 0;
 var _skipPop = false;
@@ -327,7 +333,11 @@ function calcStreak() {
 }
 
 function renderHome() {
+  var _tmpls;
   return seedToday().then(function() {
+    return dAll('templates');
+  }).then(function(tmpls) {
+    _tmpls = tmpls;
     return dIdx('instances', 'date', toDay());
   }).then(function(insts) {
     var el = document.getElementById('hcnt');
@@ -340,31 +350,30 @@ function renderHome() {
       totalItems += inst.items.length;
       inst.items.forEach(function(it) { if (it.checked) checkedItems++; });
     });
-    var remaining = totalItems - checkedItems;
     var pct = totalItems > 0 ? Math.round(checkedItems / totalItems * 100) : 0;
 
-    var onceCount = 0;
-    insts.forEach(function(inst) {
-      if (inst.type === 'oneTime') onceCount++;
-    });
+    var scheduled = _tmpls.filter(function(t) {
+      return t.type === 'oneTime' && t.scheduledDate && t.scheduledDate >= toDay();
+    }).sort(function(a, b) { return a.scheduledDate < b.scheduledDate ? -1 : 1; });
 
     var h = '<div class="dth"><h2>' + todayLbl() + '</h2><p>오늘 챙길 것들을 확인하세요</p></div>';
-
     h += '<div class="dash">';
 
-    if (remaining > 0) {
-      h += '<div class="dcard"><div class="dcard-label">남은 준비물</div>' +
-        '<div class="dcard-val">' + remaining + '개</div>' +
-        '<div class="dcard-sub">총 ' + totalItems + '개 중</div></div>';
-    } else if (totalItems > 0) {
-      h += '<div class="dcard"><div class="dcard-label">남은 준비물</div>' +
-        '<div class="dcard-val dcard-zero">완료!</div>' +
-        '<div class="dcard-sub">모두 챙겼어요</div></div>';
+    if (scheduled.length > 0) {
+      var nearest = scheduled[0];
+      var diff = Math.ceil((new Date(nearest.scheduledDate) - new Date(toDay())) / 86400000);
+      var ddayTxt = diff === 0 ? '<span style="color:var(--dg)">오늘!</span>' : 'D-' + diff;
+      h += '<div class="dcard"><div class="dcard-label">다가오는 예약</div>' +
+        '<div class="dcard-val">' + ddayTxt + '</div>' +
+        '<div class="dcard-sub">' + esc(nearest.name) + (scheduled.length > 1 ? ' 외 ' + (scheduled.length - 1) + '개' : '') + '</div></div>';
     } else {
-      h += '<div class="dcard"><div class="dcard-label">남은 준비물</div>' +
-        '<div class="dcard-val" style="color:var(--tx2)">—</div>' +
-        '<div class="dcard-sub">리스트를 추가하세요</div></div>';
+      h += '<div class="dcard"><div class="dcard-label">다가오는 예약</div>' +
+        '<div class="dcard-val" style="font-size:1.1rem;color:var(--tx2)">없음</div>' +
+        '<div class="dcard-sub">일회성 예약이 없어요</div></div>';
     }
+
+    var onceCount = 0;
+    insts.forEach(function(inst) { if (inst.type === 'oneTime') onceCount++; });
 
     if (onceCount > 0) {
       h += '<div class="dcard"><div class="dcard-label">오늘 추가 준비물</div>' +
@@ -609,7 +618,7 @@ function closeCheck() {
   if (!el.classList.contains('on')) return;
   el.classList.remove('on');
   curInst = null;
-  editMode = false;
+  _lpActive = false;
   renderHome();
 }
 
@@ -626,18 +635,18 @@ function drawCheck() {
   var dn = inst.items.filter(function(i) { return i.checked; }).length;
   var pc = tot > 0 ? Math.round(dn / tot * 100) : 0;
 
-  document.getElementById('cspr').textContent = editMode ? '편집 중' : (dn + '/' + tot);
-
-  var edtBtn = document.getElementById('csedt');
-  if (edtBtn) edtBtn.style.color = editMode ? 'var(--pr)' : 'var(--tx2)';
+  document.getElementById('cspr').textContent = _lpActive ? '편집 중' : (dn + '/' + tot);
 
   var h = '';
-  if (!editMode) {
+  if (!_lpActive) {
     h += '<div class="cs-pbar"><div class="pbar"><div class="pfill" style="width:' + pc + '%"></div></div></div>';
+    h += '<div style="text-align:center;padding:4px 0 8px;font-size:.7rem;color:var(--tx2)">길게 누르면 순서 변경</div>';
+  } else {
+    h += '<div style="text-align:center;padding:8px 0;font-size:.78rem;color:var(--pr);font-weight:700">↑↓ 순서 변경 모드 · 아무 곳 터치하면 종료</div>';
   }
   var sorted = inst.items.slice().sort(function(a, b) { return a.sortOrder - b.sortOrder; });
   sorted.forEach(function(item, idx) {
-    if (editMode) {
+    if (_lpActive) {
       h += '<div class="ci" style="cursor:default">' +
         '<span class="ci-txt" style="flex:1">' + esc(item.text) + '</span>' +
         '<button class="ib mvup" data-id="' + item.id + '" ' + (idx === 0 ? 'style="opacity:.2;pointer-events:none"' : '') + '>' + ICONS.arrowUp + '</button>' +
@@ -651,22 +660,45 @@ function drawCheck() {
   var csb = document.getElementById('csb');
   csb.innerHTML = h;
 
-  if (editMode) {
+  if (_lpActive) {
     csb.querySelectorAll('.mvup').forEach(function(b) {
       b.addEventListener('click', function(e) { e.stopPropagation(); moveItem(b.dataset.id, -1); });
     });
     csb.querySelectorAll('.mvdn').forEach(function(b) {
       b.addEventListener('click', function(e) { e.stopPropagation(); moveItem(b.dataset.id, 1); });
     });
+    csb.addEventListener('click', function(e) {
+      if (!e.target.closest('.mvup') && !e.target.closest('.mvdn')) {
+        _lpActive = false;
+        drawCheck();
+      }
+    });
   } else {
     csb.querySelectorAll('.ci').forEach(function(c) {
-      c.addEventListener('click', function() { toggleItem(c.dataset.id); });
+      c.addEventListener('click', function() {
+        if (_lpTimer) return;
+        toggleItem(c.dataset.id);
+      });
+      c.addEventListener('touchstart', function(e) {
+        _lpTimer = setTimeout(function() {
+          _lpTimer = null;
+          _lpActive = true;
+          if (navigator.vibrate) navigator.vibrate(40);
+          drawCheck();
+        }, 500);
+      }, {passive: true});
+      c.addEventListener('touchend', function() {
+        if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+      }, {passive: true});
+      c.addEventListener('touchmove', function() {
+        if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+      }, {passive: true});
     });
   }
 
   var qBtn = document.getElementById('csqck');
   if (qBtn) {
-    if (editMode) {
+    if (_lpActive) {
       qBtn.style.display = 'none';
     } else {
       qBtn.style.display = '';
@@ -1017,13 +1049,22 @@ function bindEvents() {
     }
   });
 
+  var _sheetY = 0;
+  var ms = document.getElementById('ms');
+  ms.addEventListener('touchstart', function(e) {
+    _sheetY = e.touches[0].clientY;
+  }, {passive: true});
+  ms.addEventListener('touchend', function(e) {
+    var dy = e.changedTouches[0].clientY - _sheetY;
+    if (dy > 80) {
+      closeSheet();
+      _skipPop = true;
+      history.back();
+    }
+  }, {passive: true});
+
   document.getElementById('csbk').addEventListener('click', function() {
     closeCheckAndBack();
-  });
-
-  document.getElementById('csedt').addEventListener('click', function() {
-    editMode = !editMode;
-    drawCheck();
   });
 
   document.getElementById('csqck').addEventListener('click', function() {
@@ -1079,7 +1120,6 @@ function injectTabIcons() {
   document.querySelector('#tbList .tbi').innerHTML = ICONS.listCheck;
   document.querySelector('#tbSets .tbi').innerHTML = ICONS.gear;
   document.getElementById('csbk').innerHTML = ICONS.arrowLeft;
-  document.getElementById('csedt').innerHTML = ICONS.pen;
   document.querySelector('.fab').innerHTML = ICONS.plus;
   document.getElementById('csrst').innerHTML = ic('rotateLeft') + ' 초기화';
 }

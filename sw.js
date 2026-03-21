@@ -1,4 +1,4 @@
-const CACHE = 'nc-v4';
+const CACHE = 'nc-v5';
 const ASSETS = ['./', './index.html', './style.css', './app.js', './manifest.json'];
 
 self.addEventListener('install', function(e) {

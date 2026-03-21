@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.0.0';
+var APP_VERSION = 'v1.1.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -274,6 +274,50 @@ function cleanup() {
   });
 }
 
+function greeting() {
+  var h = new Date().getHours();
+  if (h < 6) return '새벽이네요, 화이팅!';
+  if (h < 12) return '좋은 아침이에요!';
+  if (h < 18) return '오후도 힘내세요!';
+  return '내일 준비, 시작!';
+}
+
+function ringSvg(pct) {
+  var r = 27;
+  var c = Math.PI * 2 * r;
+  var offset = c - (c * pct / 100);
+  var color = pct >= 100 ? 'var(--ok)' : 'var(--pr)';
+  return '<div class="dcard-ring">' +
+    '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="' + r + '" fill="none" stroke="var(--sf2)" stroke-width="6"/>' +
+    '<circle cx="32" cy="32" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + c + '" stroke-dashoffset="' + offset + '"/></svg>' +
+    '<div class="dcard-ring-pct">' + pct + '%</div></div>';
+}
+
+function calcStreak() {
+  return dAll('instances').then(function(all) {
+    var dateSet = {};
+    all.forEach(function(inst) {
+      if (inst.isCompleted && inst.date) dateSet[inst.date] = true;
+    });
+    var streak = 0;
+    var d = new Date();
+    var today = toDay();
+    if (!dateSet[today]) {
+      d.setDate(d.getDate() - 1);
+    }
+    for (var i = 0; i < 3650; i++) {
+      var ds = d.toISOString().slice(0, 10);
+      if (dateSet[ds]) {
+        streak++;
+        d.setDate(d.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  });
+}
+
 function renderHome() {
   return seedToday().then(function() {
     return dIdx('instances', 'date', toDay());
@@ -281,7 +325,59 @@ function renderHome() {
     var el = document.getElementById('hcnt');
     var pending = insts.filter(function(i) { return !i.isCompleted; });
     var done = insts.filter(function(i) { return i.isCompleted; });
+
+    var totalItems = 0;
+    var checkedItems = 0;
+    insts.forEach(function(inst) {
+      totalItems += inst.items.length;
+      inst.items.forEach(function(it) { if (it.checked) checkedItems++; });
+    });
+    var remaining = totalItems - checkedItems;
+    var pct = totalItems > 0 ? Math.round(checkedItems / totalItems * 100) : 0;
+
+    var onceCount = 0;
+    insts.forEach(function(inst) {
+      if (inst.type === 'oneTime') onceCount++;
+    });
+
     var h = '<div class="dth"><h2>' + todayLbl() + '</h2><p>오늘 챙길 것들을 확인하세요</p></div>';
+
+    h += '<div class="dash">';
+
+    if (remaining > 0) {
+      h += '<div class="dcard"><div class="dcard-label">남은 준비물</div>' +
+        '<div class="dcard-val">' + remaining + '개</div>' +
+        '<div class="dcard-sub">총 ' + totalItems + '개 중</div></div>';
+    } else if (totalItems > 0) {
+      h += '<div class="dcard"><div class="dcard-label">남은 준비물</div>' +
+        '<div class="dcard-val dcard-zero">완료!</div>' +
+        '<div class="dcard-sub">모두 챙겼어요</div></div>';
+    } else {
+      h += '<div class="dcard"><div class="dcard-label">남은 준비물</div>' +
+        '<div class="dcard-val" style="color:var(--tx2)">—</div>' +
+        '<div class="dcard-sub">리스트를 추가하세요</div></div>';
+    }
+
+    if (onceCount > 0) {
+      h += '<div class="dcard"><div class="dcard-label">오늘 추가 준비물</div>' +
+        '<div class="dcard-val" style="color:#EA580C">' + onceCount + '개</div>' +
+        '<div class="dcard-sub">일회성 리스트</div></div>';
+    } else {
+      h += '<div class="dcard"><div class="dcard-label">오늘 추가 준비물</div>' +
+        '<div class="dcard-val" style="font-size:1.1rem;color:var(--tx2)">추가 없음</div>' +
+        '<div class="dcard-sub">고정 리스트만</div></div>';
+    }
+
+    h += '<div class="dcard" style="align-items:center;text-align:center">' +
+      '<div class="dcard-label">오늘 진행률</div>' +
+      ringSvg(pct) +
+      '<div class="dcard-sub">' + checkedItems + '/' + totalItems + ' 완료</div></div>';
+
+    h += '<div class="dcard"><div class="dcard-label">오늘</div>' +
+      '<div class="dcard-val" style="font-size:1.1rem">' + todayLbl() + '</div>' +
+      '<div class="dcard-msg">' + greeting() + '</div></div>';
+
+    h += '</div>';
 
     if (!insts.length) {
       h += '<div class="empty"><div class="empty-ico">' + ICONS.clipboard + '</div><p>오늘 사용할 리스트가 없어요<br>+ 버튼을 눌러 추가해보세요</p></div>';
@@ -550,10 +646,19 @@ function showDone() {
   if (navigator.vibrate) navigator.vibrate([60, 40, 100]);
   var ov = document.getElementById('cov');
   ov.classList.add('on');
+  calcStreak().then(function(streak) {
+    var streakEl = document.getElementById('covStreak');
+    if (streakEl && streak > 1) {
+      streakEl.textContent = '연속 ' + streak + '일째 완료!';
+      streakEl.style.display = 'block';
+    }
+  });
   setTimeout(function() {
     ov.classList.remove('on');
+    var se = document.getElementById('covStreak');
+    if (se) { se.style.display = 'none'; se.textContent = ''; }
     closeCheckAndBack();
-  }, 2000);
+  }, 2500);
 }
 
 function renderSettings() {

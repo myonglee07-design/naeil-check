@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.2.0';
+var APP_VERSION = 'v1.3.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -16,7 +16,9 @@ var ICONS = {
   chevronRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,18 15,12 9,6"/></svg>',
   archive: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21,8 21,21 3,21 3,8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>',
   clipboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',
-  plusCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>'
+  plusCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
+  arrowUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18,15 12,9 6,15"/></svg>',
+  arrowDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6,9 12,15 18,9"/></svg>'
 };
 
 var DEFAULT_TMPLS = [
@@ -38,6 +40,7 @@ var db = null;
 var curTab = 'home';
 var curSeg = 'fixed';
 var curInst = null;
+var editMode = false;
 var swX = 0;
 var swY = 0;
 var _skipPop = false;
@@ -174,7 +177,7 @@ function dlg(title, msg, btns) {
       var btn = document.createElement('button');
       btn.textContent = b.label;
       btn.className = b.cls || 'bc';
-      btn.onclick = function() { closeDlg(); _skipPop = true; history.back(); res(b.val); };
+      btn.onclick = function() { _dlgResolve = null; document.getElementById('do').classList.remove('on'); _skipPop = true; history.back(); res(b.val); };
       c.appendChild(btn);
     });
     document.getElementById('do').classList.add('on');
@@ -240,17 +243,19 @@ function seedDefaults() {
 function seedToday() {
   return dAll('templates').then(function(tmpls) {
     var fixed = tmpls.filter(function(t) { return t.type === 'fixed'; });
+    var scheduled = tmpls.filter(function(t) { return t.type === 'oneTime' && t.scheduledDate === toDay(); });
+    var autoSeed = fixed.concat(scheduled);
     return dIdx('instances', 'date', toDay()).then(function(todayInsts) {
       var existIds = todayInsts.map(function(i) { return i.templateId; });
       var p = Promise.resolve();
-      fixed.forEach(function(t) {
+      autoSeed.forEach(function(t) {
         if (existIds.indexOf(t.id) >= 0) return;
         p = p.then(function() {
           return dPut('instances', {
             id: uid(),
             templateId: t.id,
             name: t.name,
-            type: 'fixed',
+            type: t.type,
             date: toDay(),
             items: t.items.map(function(it) { return {id: it.id, text: it.text, sortOrder: it.sortOrder, checked: false}; }),
             isCompleted: false,
@@ -464,10 +469,17 @@ function renderList() {
       var h = '<div class="lc">';
       filtered.forEach(function(t) {
         var typeLabel = t.type === 'fixed' ? '매일 반복' : '일회성';
+        var dday = '';
+        if (t.type === 'oneTime' && t.scheduledDate) {
+          var diff = Math.ceil((new Date(t.scheduledDate) - new Date(toDay())) / 86400000);
+          if (diff > 0) dday = ' · <span style="color:var(--pr);font-weight:700">D-' + diff + '</span>';
+          else if (diff === 0) dday = ' · <span style="color:var(--dg);font-weight:700">오늘!</span>';
+          else dday = ' · <span style="color:var(--tx2)">지남</span>';
+        }
         h += '<div class="tmpl-card"><div class="tmpl-head"><h3>' + esc(t.name) + '</h3>' +
           '<div class="acts"><button class="ib etb" data-id="' + t.id + '">' + ic('pen') + '</button>' +
           '<button class="ib dtb" data-id="' + t.id + '">' + ic('trash') + '</button></div></div>' +
-          '<div class="tmpl-meta">' + t.items.length + '개 항목 · ' + typeLabel + '</div></div>';
+          '<div class="tmpl-meta">' + t.items.length + '개 항목 · ' + typeLabel + dday + '</div></div>';
       });
       el.innerHTML = h + '</div>';
     }
@@ -506,6 +518,8 @@ function showTmplEditor(tmpl) {
   var nm = tmpl ? tmpl.name : '';
   var tp = tmpl ? tmpl.type : curSeg;
   var its = tmpl ? tmpl.items.map(function(i) { return i.text; }).join('\n') : '';
+  var sd = tmpl ? (tmpl.scheduledDate || '') : '';
+  var showDate = tp === 'oneTime';
 
   openSheet(
     '<div class="stl">' + (isEdit ? '리스트 수정' : '리스트 추가') + '</div>' +
@@ -513,6 +527,9 @@ function showTmplEditor(tmpl) {
     '<div class="fg"><label class="fl">타입</label><select class="sei" id="eTp">' +
     '<option value="fixed" ' + (tp === 'fixed' ? 'selected' : '') + '>고정 (매일 반복)</option>' +
     '<option value="oneTime" ' + (tp === 'oneTime' ? 'selected' : '') + '>일회성 (특정 상황)</option></select></div>' +
+    '<div class="fg" id="eDateWrap" style="display:' + (showDate ? 'block' : 'none') + '"><label class="fl">예약 날짜 (선택)</label>' +
+    '<input type="date" class="ti" id="eDate" value="' + sd + '">' +
+    '<p class="hint">비워두면 수동 추가, 날짜 지정하면 해당일에 자동 표시</p></div>' +
     '<div class="fg"><label class="fl">항목 목록</label><div class="ia"><textarea id="eIt" placeholder="항목을 한 줄씩 입력하세요&#10;예:&#10;휴대폰&#10;지갑&#10;차키">' + esc(its) + '</textarea></div>' +
     '<p class="hint">한 줄 = 하나의 항목. 줄바꿈으로 여러 항목을 입력할 수 있어요.</p></div>' +
     '<button class="btn btp" id="eSave">' + (isEdit ? '저장' : '추가') + '</button>' +
@@ -520,22 +537,30 @@ function showTmplEditor(tmpl) {
     '<div style="height:8px"></div>'
   );
 
+  document.getElementById('eTp').addEventListener('change', function(e) {
+    document.getElementById('eDateWrap').style.display = e.target.value === 'oneTime' ? 'block' : 'none';
+  });
+
   document.getElementById('eSave').addEventListener('click', function() {
     var nm2 = document.getElementById('eNm').value.trim();
     var tp2 = document.getElementById('eTp').value;
     var raw = document.getElementById('eIt').value.trim();
+    var dateVal = document.getElementById('eDate').value || '';
     if (!nm2) { toast('이름을 입력해주세요', 3000); return; }
     if (!raw) { toast('항목을 입력해주세요', 3000); return; }
     var its2 = raw.split('\n').map(function(s) { return s.trim(); }).filter(Boolean)
       .map(function(tx, i) { return {id: uid(), text: tx, sortOrder: i}; });
-    dPut('templates', {
+    var tplData = {
       id: isEdit ? tmpl.id : uid(),
       name: nm2,
       type: tp2,
       items: its2,
       sortOrder: isEdit ? tmpl.sortOrder : Date.now(),
       createdAt: isEdit ? tmpl.createdAt : Date.now()
-    }).then(function() {
+    };
+    if (tp2 === 'oneTime') tplData.scheduledDate = dateVal;
+    else tplData.scheduledDate = '';
+    dPut('templates', tplData).then(function() {
       closeSheetAndBack();
       toast(isEdit ? '저장됐습니다' : '추가됐습니다');
       renderList();
@@ -584,6 +609,7 @@ function closeCheck() {
   if (!el.classList.contains('on')) return;
   el.classList.remove('on');
   curInst = null;
+  editMode = false;
   renderHome();
 }
 
@@ -600,32 +626,79 @@ function drawCheck() {
   var dn = inst.items.filter(function(i) { return i.checked; }).length;
   var pc = tot > 0 ? Math.round(dn / tot * 100) : 0;
 
-  document.getElementById('cspr').textContent = dn + '/' + tot;
+  document.getElementById('cspr').textContent = editMode ? '편집 중' : (dn + '/' + tot);
 
-  var h = '<div class="cs-pbar"><div class="pbar"><div class="pfill" style="width:' + pc + '%"></div></div></div>';
+  var edtBtn = document.getElementById('csedt');
+  if (edtBtn) edtBtn.style.color = editMode ? 'var(--pr)' : 'var(--tx2)';
+
+  var h = '';
+  if (!editMode) {
+    h += '<div class="cs-pbar"><div class="pbar"><div class="pfill" style="width:' + pc + '%"></div></div></div>';
+  }
   var sorted = inst.items.slice().sort(function(a, b) { return a.sortOrder - b.sortOrder; });
-  sorted.forEach(function(item) {
-    h += '<div class="ci ' + (item.checked ? 'ck' : '') + '" data-id="' + item.id + '">' +
-      '<div class="ci-circ"></div><span class="ci-txt">' + esc(item.text) + '</span></div>';
+  sorted.forEach(function(item, idx) {
+    if (editMode) {
+      h += '<div class="ci" style="cursor:default">' +
+        '<span class="ci-txt" style="flex:1">' + esc(item.text) + '</span>' +
+        '<button class="ib mvup" data-id="' + item.id + '" ' + (idx === 0 ? 'style="opacity:.2;pointer-events:none"' : '') + '>' + ICONS.arrowUp + '</button>' +
+        '<button class="ib mvdn" data-id="' + item.id + '" ' + (idx === sorted.length - 1 ? 'style="opacity:.2;pointer-events:none"' : '') + '>' + ICONS.arrowDown + '</button></div>';
+    } else {
+      h += '<div class="ci ' + (item.checked ? 'ck' : '') + '" data-id="' + item.id + '">' +
+        '<div class="ci-circ"></div><span class="ci-txt">' + esc(item.text) + '</span></div>';
+    }
   });
 
   var csb = document.getElementById('csb');
   csb.innerHTML = h;
-  csb.querySelectorAll('.ci').forEach(function(c) {
-    c.addEventListener('click', function() { toggleItem(c.dataset.id); });
-  });
+
+  if (editMode) {
+    csb.querySelectorAll('.mvup').forEach(function(b) {
+      b.addEventListener('click', function(e) { e.stopPropagation(); moveItem(b.dataset.id, -1); });
+    });
+    csb.querySelectorAll('.mvdn').forEach(function(b) {
+      b.addEventListener('click', function(e) { e.stopPropagation(); moveItem(b.dataset.id, 1); });
+    });
+  } else {
+    csb.querySelectorAll('.ci').forEach(function(c) {
+      c.addEventListener('click', function() { toggleItem(c.dataset.id); });
+    });
+  }
 
   var qBtn = document.getElementById('csqck');
   if (qBtn) {
-    var next = nextUnchecked();
-    if (next) {
-      qBtn.disabled = false;
-      qBtn.textContent = '✓  ' + next.text;
+    if (editMode) {
+      qBtn.style.display = 'none';
     } else {
-      qBtn.disabled = true;
-      qBtn.textContent = '모두 완료!';
+      qBtn.style.display = '';
+      var next = nextUnchecked();
+      if (next) {
+        qBtn.disabled = false;
+        qBtn.textContent = '✓  ' + next.text;
+      } else {
+        qBtn.disabled = true;
+        qBtn.textContent = '모두 완료!';
+      }
     }
   }
+}
+
+function moveItem(itemId, dir) {
+  if (!curInst) return;
+  var sorted = curInst.items.slice().sort(function(a, b) { return a.sortOrder - b.sortOrder; });
+  var idx = -1;
+  for (var i = 0; i < sorted.length; i++) {
+    if (sorted[i].id === itemId) { idx = i; break; }
+  }
+  if (idx < 0) return;
+  var newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= sorted.length) return;
+  var tmpOrder = sorted[idx].sortOrder;
+  sorted[idx].sortOrder = sorted[newIdx].sortOrder;
+  sorted[newIdx].sortOrder = tmpOrder;
+  dPut('instances', curInst).then(function() {
+    drawCheck();
+    if (navigator.vibrate) navigator.vibrate(15);
+  });
 }
 
 function nextUnchecked() {
@@ -948,6 +1021,11 @@ function bindEvents() {
     closeCheckAndBack();
   });
 
+  document.getElementById('csedt').addEventListener('click', function() {
+    editMode = !editMode;
+    drawCheck();
+  });
+
   document.getElementById('csqck').addEventListener('click', function() {
     quickCheck();
   });
@@ -1001,6 +1079,7 @@ function injectTabIcons() {
   document.querySelector('#tbList .tbi').innerHTML = ICONS.listCheck;
   document.querySelector('#tbSets .tbi').innerHTML = ICONS.gear;
   document.getElementById('csbk').innerHTML = ICONS.arrowLeft;
+  document.getElementById('csedt').innerHTML = ICONS.pen;
   document.querySelector('.fab').innerHTML = ICONS.plus;
   document.getElementById('csrst').innerHTML = ic('rotateLeft') + ' 초기화';
 }

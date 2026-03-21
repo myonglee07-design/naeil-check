@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.5.3';
+var APP_VERSION = 'v1.6.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -34,8 +34,8 @@ var DEFAULT_TMPLS = [
   {name:'현장 근무', type:'fixed', items:['작업복','안전모','안전화','작업장갑','안전 조끼','마스크','보온병 / 물','수건','충전 케이블 / 보조배터리','휴대폰','지갑','신분증 / 출입증']}
 ];
 
-var LIGHT_COLORS = ['#93C5FD','#86EFAC','#C4B5FD','#FBCFE8','#FCA5A5','#67E8F9','#1E293B'];
-var DARK_COLORS = ['#60A5FA','#34D399','#A78BFA','#F9A8D4','#FCA5A5','#22D3EE','#F8FAFC'];
+var LIGHT_COLORS = ['#3B82F6','#10B981','#7C3AED','#F59E0B','#EC4899','#EF4444','#1E293B'];
+var DARK_COLORS = ['#60A5FA','#34D399','#A78BFA','#FBBF24','#FB7185','#F87171','#F8FAFC'];
 var BG_LIGHT = ['','#FFF1F2','#FEF9C3','#DCFCE7','#DBEAFE','#F3E8FF','#FFF7ED','#E0F2FE'];
 var BG_DARK = ['','#1A1A2E','#1B2A3D','#1A2E1A','#2D1B3E','#2A1F1F','#1F2A2A','#2A2519'];
 var BG_LABELS = ['기본','로즈','레몬','민트','스카이','라벤더','피치','아이스'];
@@ -515,7 +515,7 @@ function renderList() {
     if (!filtered.length) {
       el.innerHTML = '<div class="empty"><div class="empty-ico">' + ICONS.plusCircle + '</div><p>리스트가 없어요<br>+ 버튼으로 추가해보세요</p></div>';
     } else {
-      var h = '<div class="lc">';
+      var h = '<div style="text-align:center;padding:6px 0 2px;font-size:.68rem;color:var(--tx2)">길게 누르면 순서 변경</div><div class="lc">';
       filtered.forEach(function(t) {
         var typeLabel = t.type === 'fixed' ? '매일 반복' : '일회성';
         var dday = '';
@@ -525,7 +525,7 @@ function renderList() {
           else if (diff === 0) dday = ' · <span style="color:var(--dg);font-weight:700">오늘!</span>';
           else dday = ' · <span style="color:var(--tx2)">지남</span>';
         }
-        h += '<div class="tmpl-card"><div class="tmpl-head"><h3>' + esc(t.name) + '</h3>' +
+        h += '<div class="tmpl-card" data-tid="' + t.id + '"><div class="tmpl-head"><h3>' + esc(t.name) + '</h3>' +
           '<div class="acts"><button class="ib etb" data-id="' + t.id + '">' + ic('pen') + '</button>' +
           '<button class="ib dtb" data-id="' + t.id + '">' + ic('trash') + '</button></div></div>' +
           '<div class="tmpl-meta"><span style="color:var(--pr);font-weight:700">' + t.items.length + '개</span> 항목 · ' + typeLabel + dday + '</div></div>';
@@ -558,7 +558,66 @@ function renderList() {
         });
       });
     });
+
+    var _tlt = null;
+    var _tDragId = null;
+    var _tStartY = 0;
+    el.querySelectorAll('.tmpl-card[data-tid]').forEach(function(card) {
+      card.addEventListener('touchstart', function(e) {
+        _tStartY = e.touches[0].clientY;
+        var tid = card.dataset.tid;
+        _tlt = setTimeout(function() {
+          _tlt = null;
+          _tDragId = tid;
+          card.classList.add('ci-drag');
+          if (navigator.vibrate) navigator.vibrate(40);
+        }, 450);
+      }, {passive: true});
+
+      card.addEventListener('touchmove', function(e) {
+        if (_tlt) {
+          if (Math.abs(e.touches[0].clientY - _tStartY) > 10) { clearTimeout(_tlt); _tlt = null; }
+        }
+        if (!_tDragId || card.dataset.tid !== _tDragId) return;
+        var curY = e.touches[0].clientY;
+        var cards = el.querySelectorAll('.tmpl-card[data-tid]');
+        for (var i = 0; i < cards.length; i++) {
+          if (cards[i].dataset.tid === _tDragId) continue;
+          var rect = cards[i].getBoundingClientRect();
+          var mid = rect.top + rect.height / 2;
+          if ((curY < mid && rect.top < curY) || (curY > mid && curY < rect.bottom)) {
+            swapTmplOrder(_tDragId, cards[i].dataset.tid, tmpls);
+            return;
+          }
+        }
+      }, {passive: true});
+
+      card.addEventListener('touchend', function() {
+        if (_tlt) { clearTimeout(_tlt); _tlt = null; }
+        if (_tDragId) {
+          _tDragId = null;
+          renderList();
+        }
+      }, {passive: true});
+    });
+
     updateFab();
+  });
+}
+
+function swapTmplOrder(idA, idB, tmpls) {
+  var a = null, b = null;
+  for (var i = 0; i < tmpls.length; i++) {
+    if (tmpls[i].id === idA) a = tmpls[i];
+    if (tmpls[i].id === idB) b = tmpls[i];
+  }
+  if (!a || !b) return;
+  var tmp = a.sortOrder;
+  a.sortOrder = b.sortOrder;
+  b.sortOrder = tmp;
+  if (navigator.vibrate) navigator.vibrate(15);
+  Promise.all([dPut('templates', a), dPut('templates', b)]).then(function() {
+    renderList();
   });
 }
 

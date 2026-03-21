@@ -422,7 +422,7 @@ html, body {
 
 .sb.on {
   background: var(--sf);
-  color: var(--tx);
+  color: var(--pr);
   box-shadow: 0 1px 4px rgba(0,0,0,.1);
 }
 
@@ -528,6 +528,7 @@ html, body {
   background: var(--sf);
   border-radius: var(--rd);
   border: 1px solid var(--bd);
+  border-left: 4px solid var(--pr);
   margin: 0 0 8px;
   overflow: hidden;
 }

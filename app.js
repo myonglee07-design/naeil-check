@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.7.1';
+var APP_VERSION = 'v1.8.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -49,7 +49,7 @@ var _lpTimer = null;
 var swX = 0;
 var swY = 0;
 var _skipPop = false;
-var cfg = {theme: 'light', fontSize: 'md', pointColor: '#EF4444', bgColor: '', archiveDays: 30};
+var cfg = {theme: 'light', fontSize: 'md', pointColor: '#EF4444', bgColor: '', archiveDays: 30, autoComplete: true};
 
 function ic(name) {
   return '<span style="display:inline-flex;width:1.1rem;height:1.1rem;align-items:center;flex-shrink:0">' + (ICONS[name] || '') + '</span>';
@@ -633,6 +633,19 @@ function swapTmplOrder(idA, idB, tmpls) {
   });
 }
 
+function collectAcItems() {
+  return dAll('templates').then(function(tmpls) {
+    var set = {};
+    tmpls.forEach(function(t) {
+      t.items.forEach(function(it) {
+        var txt = it.text.trim();
+        if (txt) set[txt] = true;
+      });
+    });
+    return Object.keys(set).sort();
+  });
+}
+
 function showTmplEditor(tmpl) {
   var isEdit = !!tmpl;
   var nm = tmpl ? tmpl.name : '';
@@ -650,7 +663,8 @@ function showTmplEditor(tmpl) {
     '<div class="fg" id="eDateWrap" style="display:' + (showDate ? 'block' : 'none') + '"><label class="fl">예약 날짜 (선택)</label>' +
     '<input type="date" class="ti" id="eDate" value="' + sd + '">' +
     '<p class="hint">비워두면 수동 추가, 날짜 지정하면 해당일에 자동 표시</p></div>' +
-    '<div class="fg" style="flex:1"><label class="fl">항목 목록</label><div class="ia"><textarea id="eIt" style="min-height:180px" placeholder="항목을 한 줄씩 입력하세요&#10;예:&#10;휴대폰&#10;지갑&#10;차키">' + esc(its) + '</textarea></div>' +
+    '<div class="fg" style="flex:1;position:relative"><label class="fl">항목 목록</label><div class="ia"><textarea id="eIt" style="min-height:180px" placeholder="항목을 한 줄씩 입력하세요&#10;예:&#10;휴대폰&#10;지갑&#10;차키">' + esc(its) + '</textarea></div>' +
+    '<div id="acDrop" style="display:none;position:absolute;left:0;right:0;background:var(--sf);border:1px solid var(--bd);border-radius:8px;max-height:150px;overflow-y:auto;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,.15)"></div>' +
     '<p class="hint">한 줄 = 하나의 항목</p></div>' +
     '<button class="btn btp" id="eSave">' + (isEdit ? '저장' : '추가') + '</button>' +
     (isEdit ? '<button class="btn bte" id="eAddToday" style="margin-top:8px">오늘에 추가</button>' : '') +
@@ -660,6 +674,57 @@ function showTmplEditor(tmpl) {
   document.getElementById('eTp').addEventListener('change', function(e) {
     document.getElementById('eDateWrap').style.display = e.target.value === 'oneTime' ? 'block' : 'none';
   });
+
+  if (cfg.autoComplete) {
+    collectAcItems().then(function(allItems) {
+      var ta = document.getElementById('eIt');
+      var drop = document.getElementById('acDrop');
+      if (!ta || !drop) return;
+
+      ta.addEventListener('input', function() {
+        var val = ta.value;
+        var pos = ta.selectionStart;
+        var before = val.substring(0, pos);
+        var lineStart = before.lastIndexOf('\n') + 1;
+        var curLine = before.substring(lineStart).trim();
+
+        if (curLine.length < 1) { drop.style.display = 'none'; return; }
+
+        var matches = allItems.filter(function(item) {
+          return item.toLowerCase().indexOf(curLine.toLowerCase()) >= 0 && item.toLowerCase() !== curLine.toLowerCase();
+        }).slice(0, 6);
+
+        if (!matches.length) { drop.style.display = 'none'; return; }
+
+        drop.innerHTML = matches.map(function(m) {
+          return '<div style="padding:10px 14px;cursor:pointer;font-size:.88rem;border-bottom:1px solid var(--bd)" data-val="' + esc(m) + '">' + esc(m) + '</div>';
+        }).join('');
+        drop.style.display = 'block';
+
+        drop.querySelectorAll('[data-val]').forEach(function(el) {
+          el.addEventListener('click', function() {
+            var v = el.dataset.val;
+            var fullVal = ta.value;
+            var p = ta.selectionStart;
+            var bef = fullVal.substring(0, p);
+            var ls = bef.lastIndexOf('\n') + 1;
+            var aft = fullVal.substring(p);
+            var afterLine = aft.indexOf('\n');
+            var rest = afterLine >= 0 ? aft.substring(afterLine) : '';
+            ta.value = fullVal.substring(0, ls) + v + rest;
+            ta.focus();
+            var newPos = ls + v.length;
+            ta.setSelectionRange(newPos, newPos);
+            drop.style.display = 'none';
+          });
+        });
+      });
+
+      ta.addEventListener('blur', function() {
+        setTimeout(function() { drop.style.display = 'none'; }, 200);
+      });
+    });
+  }
 
   document.getElementById('eSave').addEventListener('click', function() {
     var nm2 = document.getElementById('eNm').value.trim();
@@ -945,6 +1010,9 @@ function renderSettings() {
     '<option value="90" ' + (cfg.archiveDays == 90 ? 'selected' : '') + '>90일</option>' +
     '<option value="9999" ' + (cfg.archiveDays == 9999 ? 'selected' : '') + '>무제한</option>' +
     '</select></div></div></div>' +
+    '<div class="sgrp"><div class="sgrp-title">입력 보조</div><div class="sgrp-body">' +
+    '<div class="srow"><div class="srow-lbl">자동완성<span>이전 입력 항목 자동 제안</span></div>' +
+    '<button class="tgl ' + (cfg.autoComplete ? 'on' : '') + '" id="acBtn"></button></div></div></div>' +
     '<div class="sgrp"><div class="sgrp-title">백업 &amp; 복원</div><div class="sgrp-body">' +
     '<div class="srow" id="expBtn" style="cursor:pointer"><div class="srow-lbl">내보내기 (ZIP)<span>모든 데이터를 파일로 저장</span></div>' +
     '<span style="display:inline-flex;width:1rem;height:1rem;color:var(--tx2)">' + ICONS.download + '</span></div>' +
@@ -952,7 +1020,8 @@ function renderSettings() {
     '<span style="display:inline-flex;width:1rem;height:1rem;color:var(--tx2)">' + ICONS.upload + '</span></div>' +
     '<div class="srow" id="rstBtn" style="cursor:pointer"><div class="srow-lbl" style="color:var(--dg)">전체 초기화<span style="color:var(--tx2)">모든 데이터 삭제</span></div>' +
     '<span style="display:inline-flex;width:1rem;height:1rem;color:var(--dg)">' + ICONS.trash + '</span></div></div></div>' +
-    '<div class="ver">내일체크 ' + APP_VERSION + '</div>';
+    '<div class="ver">내일체크 ' + APP_VERSION + '</div>' +
+    '<div style="text-align:center;padding:8px 0 16px"><span id="appUrl" style="font-size:.72rem;color:var(--pr);text-decoration:underline;cursor:pointer">myonglee07-design.github.io/naeil-check</span></div>';
 
   document.getElementById('tgBtn').addEventListener('click', function() {
     var next = cfg.theme === 'dark' ? 'light' : 'dark';
@@ -983,6 +1052,29 @@ function renderSettings() {
 
   document.getElementById('adSel').addEventListener('change', function(e) {
     saveCfg('archiveDays', parseInt(e.target.value)).then(function() { toast('저장됐습니다'); });
+  });
+
+  document.getElementById('acBtn').addEventListener('click', function() {
+    var next = !cfg.autoComplete;
+    saveCfg('autoComplete', next).then(function() {
+      toast(next ? '자동완성 켜짐' : '자동완성 꺼짐');
+      renderSettings();
+    });
+  });
+
+  document.getElementById('appUrl').addEventListener('click', function() {
+    var url = 'https://myonglee07-design.github.io/naeil-check/';
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(function() { toast('주소가 복사됐습니다'); });
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('주소가 복사됐습니다');
+    }
   });
 
   document.getElementById('expBtn').addEventListener('click', expData);
@@ -1076,7 +1168,7 @@ function resetAll(seed) {
     results[2].forEach(function(s) { p = p.then(function() { return dDel('settings', s.key); }); });
     return p;
   }).then(function() {
-    cfg = {theme: 'light', fontSize: 'md', pointColor: '#EF4444', bgColor: '', archiveDays: 30};
+    cfg = {theme: 'light', fontSize: 'md', pointColor: '#EF4444', bgColor: '', archiveDays: 30, autoComplete: true};
     applyCfg();
     if (seed) return seedDefaults();
   });

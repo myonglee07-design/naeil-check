@@ -1,4 +1,4 @@
-var APP_VERSION = 'v2.2.0';
+var APP_VERSION = 'v2.2.1';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -416,6 +416,8 @@ function renderHome() {
     });
     var pct = totalItems > 0 ? Math.round(checkedItems / totalItems * 100) : 0;
 
+    var remaining = totalItems - checkedItems;
+
     var scheduled = _tmpls.filter(function(t) {
       return t.cat === 'oneTime' && t.scheduledDate && t.scheduledDate >= toDay();
     }).sort(function(a, b) { return a.scheduledDate < b.scheduledDate ? -1 : 1; });
@@ -423,40 +425,31 @@ function renderHome() {
     var h = '<div class="dth"><h2>' + todayLbl() + '</h2><p>오늘 챙길 것들을 확인하세요</p></div>';
     h += '<div class="dash">';
 
+    h += '<div class="dcard" id="dcard-remain" style="cursor:pointer"><div class="dcard-label">남은 체크</div>' +
+      '<div class="dcard-val" style="color:' + (remaining > 0 ? 'var(--pr)' : 'var(--ok)') + '">' + remaining + '</div>' +
+      '<div class="dcard-sub">' + (remaining > 0 ? '아직 ' + remaining + '개 남았어요' : '모두 완료!') + '</div></div>';
+
+    h += '<div class="dcard" id="dcard-prog" style="cursor:pointer;align-items:center;text-align:center">' +
+      '<div class="dcard-label">오늘 진행률</div>' +
+      ringSvg(pct) +
+      '<div class="dcard-sub">' + checkedItems + '/' + totalItems + ' 완료</div></div>';
+
     if (scheduled.length > 0) {
       var nearest = scheduled[0];
       var diff = Math.ceil((new Date(nearest.scheduledDate) - new Date(toDay())) / 86400000);
       var ddayTxt = diff === 0 ? '<span style="color:var(--dg)">오늘!</span>' : 'D-' + diff;
       h += '<div class="dcard" id="dcard-sched" style="cursor:pointer"><div class="dcard-label">다가오는 예약</div>' +
         '<div class="dcard-val">' + ddayTxt + '</div>' +
-        '<div class="dcard-sub">' + esc(nearest.name) + (scheduled.length > 1 ? ' 외 ' + (scheduled.length - 1) + '개' : '') + '</div></div>';
+        '<div class="dcard-sub">' + esc(nearest.name) + '</div></div>';
     } else {
       h += '<div class="dcard" id="dcard-sched" style="cursor:pointer"><div class="dcard-label">다가오는 예약</div>' +
         '<div class="dcard-val" style="font-size:1.1rem;color:var(--tx2)">없음</div>' +
-        '<div class="dcard-sub">일회성 예약이 없어요</div></div>';
+        '<div class="dcard-sub">예정된 일회성 없음</div></div>';
     }
 
-    var onceCount = 0;
-    insts.forEach(function(inst) { if (inst.cat === 'oneTime') onceCount++; });
-
-    if (onceCount > 0) {
-      h += '<div class="dcard" id="dcard-once" style="cursor:pointer"><div class="dcard-label">오늘 추가 준비물</div>' +
-        '<div class="dcard-val" style="color:#EA580C">' + onceCount + '개</div>' +
-        '<div class="dcard-sub">일회성 리스트</div></div>';
-    } else {
-      h += '<div class="dcard" id="dcard-once" style="cursor:pointer"><div class="dcard-label">오늘 추가 준비물</div>' +
-        '<div class="dcard-val" style="font-size:1.1rem;color:var(--tx2)">추가 없음</div>' +
-        '<div class="dcard-sub">고정 리스트만</div></div>';
-    }
-
-    h += '<div class="dcard" style="align-items:center;text-align:center">' +
-      '<div class="dcard-label">오늘 진행률</div>' +
-      ringSvg(pct) +
-      '<div class="dcard-sub">' + checkedItems + '/' + totalItems + ' 완료</div></div>';
-
-    h += '<div class="dcard"><div class="dcard-label">오늘</div>' +
-      '<div class="dcard-val" style="font-size:1.1rem">' + todayLbl() + '</div>' +
-      '<div class="dcard-msg">' + greeting() + '</div></div>';
+    h += '<div class="dcard" id="dcard-streak" style="cursor:pointer"><div class="dcard-label">연속 달성</div>' +
+      '<div class="dcard-val" id="streakVal">🔥 -</div>' +
+      '<div class="dcard-sub" id="streakSub">계산 중...</div></div>';
 
     h += '</div>';
 
@@ -701,10 +694,30 @@ function renderHome() {
       });
     }
 
+    var dcRemain = document.getElementById('dcard-remain');
+    if (dcRemain) dcRemain.addEventListener('click', function() {
+      var first = pending[0];
+      if (first) { dGet('instances', first.id).then(function(inst) { if (inst) openCheck(inst); }); }
+    });
+
+    var dcProg = document.getElementById('dcard-prog');
+    if (dcProg) dcProg.addEventListener('click', function() {
+      var el2 = document.querySelector('.stn');
+      if (el2) el2.scrollIntoView({behavior: 'smooth'});
+    });
+
     var dcSched = document.getElementById('dcard-sched');
     if (dcSched) dcSched.addEventListener('click', function() { goToSeg('oneTime'); });
-    var dcOnce = document.getElementById('dcard-once');
-    if (dcOnce) dcOnce.addEventListener('click', function() { goToSeg('oneTime'); });
+
+    var dcStreak = document.getElementById('dcard-streak');
+    if (dcStreak) dcStreak.addEventListener('click', function() { goToSeg('archive'); });
+
+    calcStreak().then(function(streak) {
+      var sv = document.getElementById('streakVal');
+      var ss = document.getElementById('streakSub');
+      if (sv) sv.innerHTML = '🔥 ' + streak;
+      if (ss) ss.textContent = streak > 0 ? streak + '일 연속!' : '오늘 시작해보세요';
+    });
 
     updateFab();
   });

@@ -1,4 +1,4 @@
-const CACHE = 'nc-v14';
+const CACHE = 'nc-v15';
 const ASSETS = ['./', './index.html', './style.css', './app.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function(e) {
@@ -18,14 +18,14 @@ self.addEventListener('activate', function(e) {
 self.addEventListener('fetch', function(e) {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then(function(cached) {
-      if (cached) return cached;
-      return fetch(e.request).then(function(res) {
-        if (!res || res.status !== 200 || res.type !== 'basic') return res;
+    fetch(e.request).then(function(res) {
+      if (res && res.status === 200) {
         var clone = res.clone();
         caches.open(CACHE).then(function(c) { c.put(e.request, clone); });
-        return res;
-      });
+      }
+      return res;
+    }).catch(function() {
+      return caches.match(e.request);
     })
   );
 });

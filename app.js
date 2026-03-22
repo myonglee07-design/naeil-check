@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.9.0';
+var APP_VERSION = 'v1.10.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -1043,6 +1043,7 @@ function renderSettings() {
     '<div class="srow" id="rstBtn" style="cursor:pointer"><div class="srow-lbl" style="color:var(--dg)">전체 초기화<span style="color:var(--tx2)">모든 데이터 삭제</span></div>' +
     '<span style="display:inline-flex;width:1rem;height:1rem;color:var(--dg)">' + ICONS.trash + '</span></div></div></div>' +
     '<div class="ver">내일체크 ' + APP_VERSION + '</div>' +
+    '<div style="text-align:center;padding:8px 0 4px"><button class="btn btp" id="pwaInstBtn" style="width:100%;max-width:280px;margin:0 auto">앱 설치하기</button></div>' +
     '<div style="text-align:center;padding:8px 0 16px"><span id="appUrl" style="font-size:.72rem;color:var(--pr);text-decoration:underline;cursor:pointer">myonglee07-design.github.io/naeil-check</span></div>';
 
   document.getElementById('tgBtn').addEventListener('click', function() {
@@ -1083,6 +1084,8 @@ function renderSettings() {
       renderSettings();
     });
   });
+
+  document.getElementById('pwaInstBtn').addEventListener('click', triggerInstall);
 
   document.getElementById('appUrl').addEventListener('click', function() {
     var url = 'https://myonglee07-design.github.io/naeil-check/';
@@ -1349,9 +1352,41 @@ function injectTabIcons() {
   if (setsTl) setsTl.innerHTML = '설정' + chk;
 }
 
+var _deferredInstall = null;
+
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  _deferredInstall = e;
+});
+
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(function() {});
+    navigator.serviceWorker.register('./sw.js').then(function(reg) {
+      reg.addEventListener('updatefound', function() {
+        var nw = reg.installing;
+        if (nw) {
+          nw.addEventListener('statechange', function() {
+            if (nw.state === 'activated') {
+              toast('새 버전이 적용됐습니다');
+            }
+          });
+        }
+      });
+      setInterval(function() { reg.update(); }, 60000);
+    }).catch(function() {});
+  }
+}
+
+function triggerInstall() {
+  if (_deferredInstall) {
+    _deferredInstall.prompt();
+    _deferredInstall.userChoice.then(function(r) {
+      if (r.outcome === 'accepted') toast('앱이 설치됐습니다!');
+      else toast('설치가 취소됐습니다');
+      _deferredInstall = null;
+    });
+  } else {
+    toast('브라우저가 앱 설치를 지원하지 않거나 이미 설치됐습니다');
   }
 }
 

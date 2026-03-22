@@ -687,7 +687,9 @@ html, body {
 
 .btn svg { width: 1rem; height: 1rem; }
 .btn:active { opacity: .8; }
+.btn-sm { padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: .75rem; font-weight: 700; }
 .btp { background: var(--pr); color: #fff; }
+.bd2 { background: var(--dg); color: #fff; }
 .bte { background: transparent; color: var(--pr); border: 1.5px solid var(--pr); }
 
 .add-row {

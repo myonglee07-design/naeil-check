@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.10.2';
+var APP_VERSION = 'v1.11.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -48,6 +48,8 @@ var curTab = 'home';
 var curSeg = 'fixed';
 var curInst = null;
 var _lpTimer = null;
+var _homeEdit = false;
+var _homeChecked = {};
 var swX = 0;
 var swY = 0;
 var _skipPop = false;
@@ -269,6 +271,7 @@ function seedToday() {
             items: t.items.map(function(it) { return {id: it.id, text: it.text, sortOrder: it.sortOrder, checked: false}; }),
             isCompleted: false,
             completedAt: null,
+            homeSortOrder: t.sortOrder || Date.now(),
             createdAt: Date.now()
           });
         });
@@ -403,17 +406,31 @@ function renderHome() {
       h += '<div class="empty"><div class="empty-ico">' + ICONS.clipboard + '</div><p>오늘 사용할 리스트가 없어요<br>+ 버튼을 눌러 추가해보세요</p></div>';
     } else {
       if (pending.length) {
-        h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center"><span style="border-bottom:2px solid var(--pr);padding-bottom:2px">미완료</span><span style="font-size:.65rem;font-weight:500;color:var(--tx2);text-transform:none;letter-spacing:0">길게 누르면 삭제</span></div><div class="lc">';
+        pending.sort(function(a, b) { return (a.homeSortOrder || 0) - (b.homeSortOrder || 0); });
+        if (_homeEdit) {
+          h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--pr);font-weight:700">편집 모드</span><div style="display:flex;gap:8px"><button class="btn-sm bd2" id="heDelBtn">선택 삭제</button><button class="btn-sm btp" id="heDoneBtn">완료</button></div></div><div class="lc">';
+        } else {
+          h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center"><span style="border-bottom:2px solid var(--pr);padding-bottom:2px">미완료</span><span style="font-size:.65rem;font-weight:500;color:var(--tx2);text-transform:none;letter-spacing:0">길게 누르면 편집</span></div><div class="lc">';
+        }
         pending.forEach(function(inst) {
           var tot = inst.items.length;
           var dn = inst.items.filter(function(i) { return i.checked; }).length;
           var pc = tot > 0 ? Math.round(dn / tot * 100) : 0;
           var tag = inst.type === 'fixed' ? '<span class="bdg bdg-fixed">고정</span>' : '<span class="bdg bdg-once">일회성</span>';
           var cardCls = inst.type === 'oneTime' ? 'hcard once-card' : 'hcard';
-          h += '<div class="' + cardCls + '" data-id="' + inst.id + '">' +
-            '<div class="hcard-head"><h3>' + (inst.icon || '📋') + ' ' + esc(inst.name) + '</h3>' + tag + '</div>' +
-            '<div class="hcard-meta">' + dn + '/' + tot + ' 완료</div>' +
-            '<div class="pbar"><div class="pfill" style="width:' + pc + '%"></div></div></div>';
+          if (_homeEdit) {
+            var chk = _homeChecked[inst.id] ? 'checked' : '';
+            h += '<div class="' + cardCls + '" data-id="' + inst.id + '" style="display:flex;align-items:center;gap:10px;padding-left:10px">' +
+              '<input type="checkbox" class="he-chk" data-id="' + inst.id + '" ' + chk + ' style="width:22px;height:22px;accent-color:var(--pr)">' +
+              '<div style="flex:1"><div class="hcard-head"><h3>' + (inst.icon || '📋') + ' ' + esc(inst.name) + '</h3>' + tag + '</div>' +
+              '<div class="hcard-meta">' + dn + '/' + tot + ' 완료</div>' +
+              '<div class="pbar"><div class="pfill" style="width:' + pc + '%"></div></div></div></div>';
+          } else {
+            h += '<div class="' + cardCls + '" data-id="' + inst.id + '">' +
+              '<div class="hcard-head"><h3>' + (inst.icon || '📋') + ' ' + esc(inst.name) + '</h3>' + tag + '</div>' +
+              '<div class="hcard-meta">' + dn + '/' + tot + ' 완료</div>' +
+              '<div class="pbar"><div class="pfill" style="width:' + pc + '%"></div></div></div>';
+          }
         });
         h += '</div>';
       }
@@ -432,39 +449,112 @@ function renderHome() {
     }
     el.innerHTML = h;
 
-    el.querySelectorAll('.hcard').forEach(function(c) {
-      var _ht = null;
-      c.addEventListener('click', function() {
-        if (_ht) return;
-        dGet('instances', c.dataset.id).then(function(inst) {
-          if (inst) openCheck(inst);
+    if (_homeEdit) {
+      el.querySelectorAll('.he-chk').forEach(function(chk) {
+        chk.addEventListener('change', function() {
+          if (chk.checked) _homeChecked[chk.dataset.id] = true;
+          else delete _homeChecked[chk.dataset.id];
         });
       });
-      c.addEventListener('touchstart', function(e) {
-        var sid = c.dataset.id;
-        _ht = setTimeout(function() {
-          _ht = null;
-          if (navigator.vibrate) navigator.vibrate(40);
-          dlg('리스트 삭제', '이 리스트를 오늘 목록에서 삭제할까요?', [
-            {label: '취소', val: false, cls: 'bc'},
-            {label: '삭제', val: true, cls: 'bd2'}
-          ]).then(function(ok) {
-            if (ok) {
-              dDel('instances', sid).then(function() {
-                toast('삭제됐습니다');
-                renderHome();
-              });
+
+      var _heDragId = null;
+      var _heStartY = 0;
+      el.querySelectorAll('.hcard[data-id]').forEach(function(card) {
+        card.addEventListener('touchstart', function(e) {
+          if (e.target.type === 'checkbox') return;
+          _heDragId = card.dataset.id;
+          _heStartY = e.touches[0].clientY;
+          card.classList.add('ci-drag');
+          if (navigator.vibrate) navigator.vibrate(15);
+        }, {passive: true});
+
+        card.addEventListener('touchmove', function(e) {
+          if (!_heDragId || card.dataset.id !== _heDragId) return;
+          var curY = e.touches[0].clientY;
+          var cards = el.querySelectorAll('.hcard[data-id]');
+          for (var i = 0; i < cards.length; i++) {
+            if (cards[i].dataset.id === _heDragId) continue;
+            var rect = cards[i].getBoundingClientRect();
+            var mid = rect.top + rect.height / 2;
+            if ((curY < mid && rect.top < curY) || (curY > mid && curY < rect.bottom)) {
+              swapHomeOrder(_heDragId, cards[i].dataset.id, pending);
+              return;
             }
+          }
+        }, {passive: true});
+
+        card.addEventListener('touchend', function() {
+          if (_heDragId) {
+            _heDragId = null;
+            renderHome();
+          }
+        }, {passive: true});
+      });
+
+      var delBtn = document.getElementById('heDelBtn');
+      if (delBtn) delBtn.addEventListener('click', function() {
+        var ids = Object.keys(_homeChecked);
+        if (!ids.length) { toast('삭제할 항목을 선택해주세요'); return; }
+        dlg('선택 삭제', ids.length + '개 리스트를 삭제할까요?', [
+          {label: '취소', val: false, cls: 'bc'},
+          {label: '삭제', val: true, cls: 'bd2'}
+        ]).then(function(ok) {
+          if (ok) {
+            var p = Promise.resolve();
+            ids.forEach(function(id) { p = p.then(function() { return dDel('instances', id); }); });
+            p.then(function() {
+              _homeChecked = {};
+              _homeEdit = false;
+              toast(ids.length + '개 삭제됐습니다');
+              renderHome();
+            });
+          }
+        });
+      });
+
+      var doneBtn = document.getElementById('heDoneBtn');
+      if (doneBtn) doneBtn.addEventListener('click', function() {
+        _homeEdit = false;
+        _homeChecked = {};
+        renderHome();
+      });
+
+    } else {
+      el.querySelectorAll('.hcard:not(.done)').forEach(function(c) {
+        var _ht = null;
+        var _hStartY = 0;
+        c.addEventListener('click', function() {
+          if (_ht) return;
+          dGet('instances', c.dataset.id).then(function(inst) {
+            if (inst) openCheck(inst);
           });
-        }, 500);
-      }, {passive: true});
-      c.addEventListener('touchend', function() {
-        if (_ht) { clearTimeout(_ht); _ht = null; }
-      }, {passive: true});
-      c.addEventListener('touchmove', function() {
-        if (_ht) { clearTimeout(_ht); _ht = null; }
-      }, {passive: true});
-    });
+        });
+        c.addEventListener('touchstart', function(e) {
+          _hStartY = e.touches[0].clientY;
+          _ht = setTimeout(function() {
+            _ht = null;
+            if (navigator.vibrate) navigator.vibrate(40);
+            _homeEdit = true;
+            _homeChecked = {};
+            renderHome();
+          }, 450);
+        }, {passive: true});
+        c.addEventListener('touchend', function() {
+          if (_ht) { clearTimeout(_ht); _ht = null; }
+        }, {passive: true});
+        c.addEventListener('touchmove', function(e) {
+          if (_ht && Math.abs(e.touches[0].clientY - _hStartY) > 10) { clearTimeout(_ht); _ht = null; }
+        }, {passive: true});
+      });
+
+      el.querySelectorAll('.hcard.done').forEach(function(c) {
+        c.addEventListener('click', function() {
+          dGet('instances', c.dataset.id).then(function(inst) {
+            if (inst) openCheck(inst);
+          });
+        });
+      });
+    }
 
     var togBtn = document.getElementById('togBtn');
     if (togBtn) {
@@ -644,6 +734,22 @@ function swapTmplOrder(idA, idB, tmpls) {
   });
 }
 
+function swapHomeOrder(idA, idB, insts) {
+  var a = null, b = null;
+  for (var i = 0; i < insts.length; i++) {
+    if (insts[i].id === idA) a = insts[i];
+    if (insts[i].id === idB) b = insts[i];
+  }
+  if (!a || !b) return;
+  var tmp = a.homeSortOrder || 0;
+  a.homeSortOrder = b.homeSortOrder || 0;
+  b.homeSortOrder = tmp;
+  if (navigator.vibrate) navigator.vibrate(15);
+  Promise.all([dPut('instances', a), dPut('instances', b)]).then(function() {
+    renderHome();
+  });
+}
+
 function collectAcItems() {
   return dAll('templates').then(function(tmpls) {
     var set = {};
@@ -805,6 +911,7 @@ function addInst(tmplId) {
       items: t.items.map(function(it) { return {id: it.id, text: it.text, sortOrder: it.sortOrder, checked: false}; }),
       isCompleted: false,
       completedAt: null,
+      homeSortOrder: Date.now(),
       createdAt: Date.now()
     });
   });
@@ -1256,6 +1363,8 @@ function switchTab(tab, fromPop) {
   document.getElementById(tab + 'Tab').classList.add('on');
   document.querySelector('.tbb[data-tab="' + tab + '"]').classList.add('on');
   curTab = tab;
+  _homeEdit = false;
+  _homeChecked = {};
   if (tab !== 'home' && prevTab === 'home' && !fromPop) {
     history.pushState({layer: 'tab'}, '');
   }

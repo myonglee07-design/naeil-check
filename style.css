@@ -808,6 +808,49 @@ html, body {
 .bgdot.on { border-color: var(--tx); transform: scale(1.15); }
 .bgdot.on::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--sf); }
 
+.rep-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rep-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--bd);
+  font-size: .8rem;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+
+.rep-opt input { display: none; }
+.rep-opt:has(input:checked) { border-color: var(--pr); background: var(--prl); font-weight: 700; color: var(--pr); }
+
+.day-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--bd);
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  background: transparent;
+  color: var(--tx2);
+}
+
+.day-dot.on {
+  background: var(--pr);
+  color: #fff;
+  border-color: var(--pr);
+}
+
 .ico-dot {
   display: inline-flex;
   align-items: center;

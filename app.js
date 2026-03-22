@@ -1,4 +1,4 @@
-var APP_VERSION = 'v2.2.1';
+var APP_VERSION = 'v2.3.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -25,9 +25,20 @@ var ICON_PRESET = ['📋','💼','💊','👶','🎒','🏫','✈️','🏥','�
 
 var REPEAT_OPTS = [
   {val:'daily', label:'매일'},
-  {val:'weekday', label:'평일 (월~금)'},
-  {val:'weekend', label:'주말 (토~일)'},
+  {val:'weekday', label:'평일'},
+  {val:'weekend', label:'주말'},
+  {val:'custom', label:'요일 선택'},
   {val:'manual', label:'수동'}
+];
+
+var DAYS = [
+  {key:'mon', label:'월', idx:1},
+  {key:'tue', label:'화', idx:2},
+  {key:'wed', label:'수', idx:3},
+  {key:'thu', label:'목', idx:4},
+  {key:'fri', label:'금', idx:5},
+  {key:'sat', label:'토', idx:6},
+  {key:'sun', label:'일', idx:0}
 ];
 
 var DEFAULT_TMPLS = [
@@ -309,7 +320,23 @@ function matchRepeat(repeat) {
   if (repeat === 'daily') return true;
   if (repeat === 'weekday') return d >= 1 && d <= 5;
   if (repeat === 'weekend') return d === 0 || d === 6;
+  if (repeat && repeat.indexOf(',') >= 0) {
+    var dayMap = {0:'sun',1:'mon',2:'tue',3:'wed',4:'thu',5:'fri',6:'sat'};
+    return repeat.split(',').indexOf(dayMap[d]) >= 0;
+  }
   return false;
+}
+
+function repeatLabel(repeat) {
+  if (repeat === 'daily') return '매일';
+  if (repeat === 'weekday') return '평일';
+  if (repeat === 'weekend') return '주말';
+  if (repeat === 'manual') return '수동';
+  if (repeat && repeat.indexOf(',') >= 0) {
+    var map = {mon:'월',tue:'화',wed:'수',thu:'목',fri:'금',sat:'토',sun:'일'};
+    return repeat.split(',').map(function(k) { return map[k] || k; }).join('·');
+  }
+  return '매일';
 }
 
 function seedToday() {
@@ -797,12 +824,11 @@ function renderList() {
     } else {
       var h = '<div style="text-align:center;padding:6px 0 2px;font-size:.68rem;color:var(--tx2)">길게 누르면 순서 변경</div><div class="lc">';
       filtered.forEach(function(t) {
-        var repLabel = '';
+        var repLbl = '';
         if (t.cat === 'favorite') {
-          var ro = REPEAT_OPTS.filter(function(r) { return r.val === (t.repeat || 'daily'); })[0];
-          repLabel = ro ? ro.label : '매일';
-        } else if (t.cat === 'archive') { repLabel = '보관중'; }
-        else { repLabel = '일회성'; }
+          repLbl = repeatLabel(t.repeat || 'daily');
+        } else if (t.cat === 'archive') { repLbl = '보관중'; }
+        else { repLbl = '일회성'; }
         var dday = '';
         if (t.cat === 'oneTime' && t.scheduledDate) {
           var diff = Math.ceil((new Date(t.scheduledDate) - new Date(toDay())) / 86400000);
@@ -818,7 +844,7 @@ function renderList() {
         h += '<div class="tmpl-card" data-tid="' + t.id + '"><div class="tmpl-head"><h3>' + (t.icon || '📋') + ' ' + esc(t.name) + '</h3>' +
           '<div class="acts">' + starBtn + '<button class="ib etb" data-id="' + t.id + '">' + ic('pen') + '</button>' +
           '<button class="ib dtb" data-id="' + t.id + '">' + ic('trash') + '</button></div></div>' +
-          '<div class="tmpl-meta"><span style="color:var(--pr);font-weight:700">' + t.items.length + '개</span> 항목 · ' + repLabel + dday + '</div></div>';
+          '<div class="tmpl-meta"><span style="color:var(--pr);font-weight:700">' + t.items.length + '개</span> 항목 · ' + repLbl + dday + '</div></div>';
       });
       el.innerHTML = h + '</div>';
     }
@@ -988,8 +1014,17 @@ function showTmplEditor(tmpl) {
     return '<span class="ico-dot' + (e === ico ? ' on' : '') + '" data-ico="' + e + '">' + e + '</span>';
   }).join('');
 
+  var isCustom = rp && rp.indexOf(',') >= 0;
+  var rpType = isCustom ? 'custom' : rp;
+  var customDays = isCustom ? rp.split(',') : [];
+
   var repeatHtml = REPEAT_OPTS.map(function(r) {
-    return '<option value="' + r.val + '" ' + (rp === r.val ? 'selected' : '') + '>' + r.label + '</option>';
+    return '<label class="rep-opt"><input type="radio" name="eRepType" value="' + r.val + '" ' + (rpType === r.val ? 'checked' : '') + '><span>' + r.label + '</span></label>';
+  }).join('');
+
+  var daysHtml = DAYS.map(function(d) {
+    var on = customDays.indexOf(d.key) >= 0;
+    return '<button class="day-dot ' + (on ? 'on' : '') + '" data-key="' + d.key + '">' + d.label + '</button>';
   }).join('');
 
   openSheet(
@@ -998,7 +1033,9 @@ function showTmplEditor(tmpl) {
     '<div style="flex:1"><label class="fl">분류</label><select class="sei" id="eCat" style="width:100%">' +
     '<option value="favorite" ' + (ct === 'favorite' ? 'selected' : '') + '>⭐ 즐겨찾기</option>' +
     '<option value="oneTime" ' + (ct === 'oneTime' ? 'selected' : '') + '>일회성</option></select></div></div>' +
-    '<div class="fg" id="eRepWrap" style="display:' + (showRepeat ? 'block' : 'none') + ';margin-bottom:12px"><label class="fl">반복 주기</label><select class="sei" id="eRep" style="width:100%">' + repeatHtml + '</select></div>' +
+    '<div class="fg" id="eRepWrap" style="display:' + (showRepeat ? 'block' : 'none') + ';margin-bottom:12px"><label class="fl">반복 주기</label>' +
+    '<div class="rep-opts">' + repeatHtml + '</div>' +
+    '<div id="dayPick" style="display:' + (isCustom ? 'flex' : 'none') + ';gap:6px;margin-top:8px;justify-content:space-between">' + daysHtml + '</div></div>' +
     '<div class="fg" style="margin-bottom:12px"><label class="fl">아이콘</label><div id="icoPick" style="display:flex;flex-wrap:wrap;gap:6px">' + iconHtml + '</div></div>' +
     '<input type="hidden" id="eIco" value="' + ico + '">' +
     '<div class="fg" id="eDateWrap" style="display:' + (showDate ? 'block' : 'none') + '"><label class="fl">예약 날짜 (선택)</label>' +
@@ -1016,6 +1053,16 @@ function showTmplEditor(tmpl) {
     var v = e.target.value;
     document.getElementById('eDateWrap').style.display = v === 'oneTime' ? 'block' : 'none';
     document.getElementById('eRepWrap').style.display = v === 'favorite' ? 'block' : 'none';
+  });
+
+  document.querySelectorAll('input[name="eRepType"]').forEach(function(r) {
+    r.addEventListener('change', function() {
+      document.getElementById('dayPick').style.display = r.value === 'custom' ? 'flex' : 'none';
+    });
+  });
+
+  document.querySelectorAll('.day-dot').forEach(function(d) {
+    d.addEventListener('click', function() { d.classList.toggle('on'); });
   });
 
   document.querySelectorAll('.ico-dot').forEach(function(d) {
@@ -1080,7 +1127,18 @@ function showTmplEditor(tmpl) {
   document.getElementById('eSave').addEventListener('click', function() {
     var nm2 = document.getElementById('eNm').value.trim();
     var cat2 = document.getElementById('eCat').value;
-    var rep2 = cat2 === 'favorite' ? (document.getElementById('eRep').value || 'daily') : 'manual';
+    var rep2 = 'manual';
+    if (cat2 === 'favorite') {
+      var checkedRadio = document.querySelector('input[name="eRepType"]:checked');
+      var repType = checkedRadio ? checkedRadio.value : 'daily';
+      if (repType === 'custom') {
+        var sel = [];
+        document.querySelectorAll('.day-dot.on').forEach(function(d) { sel.push(d.dataset.key); });
+        rep2 = sel.length > 0 ? sel.join(',') : 'daily';
+      } else {
+        rep2 = repType;
+      }
+    }
     var raw = document.getElementById('eIt').value.trim();
     var dateVal = document.getElementById('eDate').value || '';
     if (!nm2) { toast('이름을 입력해주세요', 3000); return; }

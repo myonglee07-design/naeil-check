@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.11.1';
+var APP_VERSION = 'v2.0.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -21,19 +21,41 @@ var ICONS = {
   arrowDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6,9 12,15 18,9"/></svg>'
 };
 
-var ICON_PRESET = ['📋','💼','💊','👶','🎒','🏫','✈️','🏥','🛒','🏛️','🔧','🏋️','🎣','⛺','🐕','📦','🎉','🧹','✏️','🚗'];
+var ICON_PRESET = ['📋','💼','💊','👶','🎒','🏫','✈️','🏥','🛒','🏛️','🔧','🏋️','🎣','⛺','🐕','📦','🎉','🧹','✏️','🚗','☀️','🌙','🍼','🏠','🩹','🎁'];
+
+var REPEAT_OPTS = [
+  {val:'daily', label:'매일'},
+  {val:'weekday', label:'평일 (월~금)'},
+  {val:'weekend', label:'주말 (토~일)'},
+  {val:'manual', label:'수동'}
+];
 
 var DEFAULT_TMPLS = [
-  {name:'출근 준비', type:'fixed', icon:'💼', items:['출근복','사원증 / 출입증','칫솔 / 치약','텀블러','충전 케이블 / 어댑터','이어폰','보조배터리','휴대폰','지갑','집키 / 차키','우산']},
-  {name:'약 먹기', type:'fixed', icon:'💊', items:['아침 약','점심 약','저녁 약','물','약 보관함']},
-  {name:'아이 외출 준비', type:'fixed', icon:'👶', items:['물','간식','휴지 / 물티슈','손수건','여벌 옷','손소독제','상비약 / 밴드','장난감','겉옷','모자','아이 신발']},
-  {name:'고등학생 등교', type:'fixed', icon:'🎒', items:['교과서 / 참고서','필기구','태블릿 / 스마트패드','보조배터리','교복 / 체육복','물통','휴대폰','학생증','교통카드','우산']},
-  {name:'유치원 등원', type:'fixed', icon:'🏫', items:['여벌 옷 / 양말','알림장','물통','간식','휴지 / 물티슈','손수건','유치원 가방','겉옷','아이 신발']},
-  {name:'여행 준비', type:'oneTime', icon:'✈️', items:['신분증 / 여권','항공권 / 교통편 예약정보','숙소 예약정보','휴대폰','충전 케이블 / 보조배터리','지갑 / 카드','현금','옷 / 속옷 / 양말','세면도구','상비약','자외선차단제','우산','현관문 잠금','가스밸브']},
-  {name:'병원 방문', type:'oneTime', icon:'🏥', items:['신분증','모바일 건강보험증','예약 정보','진료 관련 서류','처방전 / 복용 중인 약','결제 수단','휴대폰','보조배터리','물','간식']},
-  {name:'장보기 / 마트', type:'oneTime', icon:'🛒', items:['장보기 목록','장바구니 / 에코백','쿠폰 / 멤버십','결제 수단','휴대폰']},
-  {name:'공공기관 / 은행', type:'oneTime', icon:'🏛️', items:['신분증','신청 서류 원본','발급번호 / 예약번호','도장','통장 / 카드','휴대폰','필기구']},
-  {name:'현장 근무', type:'fixed', icon:'🔧', items:['작업복','안전모','안전화','작업장갑','안전 조끼','마스크','보온병 / 물','수건','충전 케이블 / 보조배터리','휴대폰','지갑','신분증 / 출입증']}
+  {name:'출근 준비',cat:'favorite',repeat:'weekday',icon:'💼',items:['출근복','사원증 / 출입증','칫솔 / 치약','텀블러','충전 케이블 / 어댑터','이어폰','보조배터리','휴대폰','지갑','집키 / 차키','우산']},
+  {name:'약 먹기',cat:'favorite',repeat:'daily',icon:'💊',items:['아침 약','점심 약','저녁 약','물','약 보관함']},
+  {name:'유치원 등원',cat:'favorite',repeat:'weekday',icon:'🏫',items:['여벌 옷 / 양말','알림장','물통','간식','휴지 / 물티슈','손수건','유치원 가방','겉옷','아이 신발']},
+  {name:'고등학생 등교',cat:'favorite',repeat:'weekday',icon:'🎒',items:['교과서 / 참고서','필기구','태블릿 / 스마트패드','보조배터리','교복 / 체육복','물통','휴대폰','학생증','교통카드','우산']},
+  {name:'아이 외출 준비',cat:'favorite',repeat:'daily',icon:'👶',items:['물','간식','휴지 / 물티슈','손수건','여벌 옷','손소독제','상비약 / 밴드','장난감','겉옷','모자','아이 신발']},
+  {name:'운동 루틴',cat:'favorite',repeat:'daily',icon:'🏋️',items:['운동복','운동화','수건','물병','이어폰','보조배터리','락커 열쇠']},
+  {name:'반려동물 케어',cat:'favorite',repeat:'daily',icon:'🐕',items:['사료 급여','간식','물 교체','산책 1회','산책 2회','배변 상태 체크','놀이 시간']},
+  {name:'아침 루틴',cat:'favorite',repeat:'daily',icon:'☀️',items:['세안','양치','스트레칭','물 한 잔','날씨 확인','출발 시간 확인']},
+  {name:'저녁 루틴',cat:'favorite',repeat:'daily',icon:'🌙',items:['설거지','세탁기 돌리기','내일 옷 준비','창문 닫기','현관문 잠금','가스 밸브 확인']},
+  {name:'차량 점검',cat:'favorite',repeat:'daily',icon:'🚗',items:['운전면허증','스마트키','타이어 상태','계기판 경고등','연료','거치대','차량용 충전 케이블','하이패스 카드']},
+  {name:'현장 근무',cat:'favorite',repeat:'weekday',icon:'🔧',items:['작업복','안전모','안전화','작업장갑','안전 조끼','마스크','보온병 / 물','수건','충전 케이블','휴대폰','지갑','신분증 / 출입증']},
+  {name:'가사 분담',cat:'favorite',repeat:'daily',icon:'🧹',items:['청소기 돌리기','설거지','세탁','쓰레기 버리기','분리수거','화장실 청소']},
+  {name:'여행 준비',cat:'oneTime',repeat:'manual',icon:'✈️',items:['신분증 / 여권','항공권 / 교통편 예약정보','숙소 예약정보','휴대폰','충전 케이블 / 보조배터리','지갑 / 카드','현금','옷 / 속옷 / 양말','세면도구','상비약','자외선차단제','우산','현관문 잠금','가스밸브']},
+  {name:'병원 방문',cat:'oneTime',repeat:'manual',icon:'🏥',items:['신분증','모바일 건강보험증','예약 정보','진료 관련 서류','처방전 / 복용 중인 약','결제 수단','휴대폰','보조배터리','물']},
+  {name:'장보기 / 마트',cat:'oneTime',repeat:'manual',icon:'🛒',items:['장보기 목록','장바구니 / 에코백','쿠폰 / 멤버십','결제 수단','휴대폰']},
+  {name:'공공기관 / 은행',cat:'oneTime',repeat:'manual',icon:'🏛️',items:['신분증','신청 서류 원본','발급번호 / 예약번호','도장','통장 / 카드','휴대폰','필기구']},
+  {name:'캠핑 준비',cat:'oneTime',repeat:'manual',icon:'⛺',items:['텐트','침낭 / 매트','버너 / 연료','코펠 / 식기','식재료 / 물','랜턴 / 손전등','구급약','방충 스프레이','쓰레기봉투']},
+  {name:'낚시 준비',cat:'oneTime',repeat:'manual',icon:'🎣',items:['낚싯대','릴 / 채비','미끼','쿨러 / 아이스박스','의자','선크림 / 모자','간식 / 물','수건']},
+  {name:'면접 준비',cat:'oneTime',repeat:'manual',icon:'✏️',items:['이력서 출력','자기소개서','포트폴리오','정장 / 구두','머리 정리','면접 장소 확인','교통편 확인','필기구']},
+  {name:'이사 체크',cat:'oneTime',repeat:'manual',icon:'📦',items:['계약서 / 등기','전기 / 가스 명의 변경','인터넷 이전','전입신고','이삿짐 정리','청소 업체','열쇠 / 비밀번호 변경']},
+  {name:'결혼식 하객',cat:'oneTime',repeat:'manual',icon:'🎉',items:['축의금','정장 / 드레스','구두','주차 확인','식장 위치 확인','카메라 / 휴대폰 충전']},
+  {name:'출산 준비',cat:'oneTime',repeat:'manual',icon:'🍼',items:['분만 가방','산모 수첩','보험카드','기저귀','젖병 / 분유','속싸개 / 배냇저고리','산모 패드','수유 쿠션']},
+  {name:'명절 준비',cat:'oneTime',repeat:'manual',icon:'🎁',items:['선물 구매','음식 재료','차량 정비','고속도로 경로 확인','현금 준비','명절 인사 목록']},
+  {name:'봄맞이 대청소',cat:'oneTime',repeat:'manual',icon:'🏠',items:['에어컨 필터 청소','창문 닦기','냉장고 정리','겨울 옷 정리','봄 옷 꺼내기','이불 세탁','방충망 점검']},
+  {name:'비상 상비약 점검',cat:'oneTime',repeat:'manual',icon:'🩹',items:['해열제 / 진통제','소독약 / 밴드','소화제','감기약','지사제','체온계','붕대 / 거즈']}
 ];
 
 var LIGHT_COLORS = ['#3B82F6','#10B981','#7C3AED','#F59E0B','#EC4899','#EF4444','#1E293B'];
@@ -45,7 +67,7 @@ var FONT_SIZES = {sm: 14, md: 16, lg: 19, xl: 22};
 
 var db = null;
 var curTab = 'home';
-var curSeg = 'fixed';
+var curSeg = 'favorite';
 var curInst = null;
 var _lpTimer = null;
 var _homeEdit = false;
@@ -231,18 +253,15 @@ function closeSheetAndBack() {
 
 function seedDefaults() {
   return dAll('templates').then(function(existing) {
-    if (existing.length > 0) return Promise.resolve();
+    if (existing.length > 0) return migrateV2(existing);
     var p = Promise.resolve();
     DEFAULT_TMPLS.forEach(function(t, i) {
       p = p.then(function() {
         return dPut('templates', {
-          id: uid(),
-          name: t.name,
-          type: t.type,
-          icon: t.icon || '📋',
+          id: uid(), name: t.name, cat: t.cat, repeat: t.repeat,
+          icon: t.icon || '📋', scheduledDate: '',
           items: t.items.map(function(tx, j) { return {id: uid(), text: tx, sortOrder: j}; }),
-          sortOrder: i,
-          createdAt: Date.now()
+          sortOrder: i, createdAt: Date.now()
         });
       });
     });
@@ -250,11 +269,47 @@ function seedDefaults() {
   });
 }
 
+function migrateV2(tmpls) {
+  var need = false;
+  tmpls.forEach(function(t) { if (t.type && !t.cat) need = true; });
+  if (!need) return Promise.resolve();
+  var p = Promise.resolve();
+  tmpls.forEach(function(t) {
+    if (t.type && !t.cat) {
+      t.cat = t.type === 'fixed' ? 'favorite' : 'oneTime';
+      t.repeat = t.type === 'fixed' ? 'daily' : 'manual';
+      delete t.type;
+      p = p.then(function() { return dPut('templates', t); });
+    }
+  });
+  return p.then(function() { return dAll('instances'); }).then(function(insts) {
+    var q = Promise.resolve();
+    insts.forEach(function(inst) {
+      if (inst.type && !inst.cat) {
+        inst.cat = inst.type === 'fixed' ? 'favorite' : 'oneTime';
+        delete inst.type;
+        q = q.then(function() { return dPut('instances', inst); });
+      }
+    });
+    return q;
+  });
+}
+
+function matchRepeat(repeat) {
+  var d = new Date().getDay();
+  if (repeat === 'daily') return true;
+  if (repeat === 'weekday') return d >= 1 && d <= 5;
+  if (repeat === 'weekend') return d === 0 || d === 6;
+  return false;
+}
+
 function seedToday() {
   return dAll('templates').then(function(tmpls) {
-    var fixed = tmpls.filter(function(t) { return t.type === 'fixed'; });
-    var scheduled = tmpls.filter(function(t) { return t.type === 'oneTime' && t.scheduledDate === toDay(); });
-    var autoSeed = fixed.concat(scheduled);
+    var autoSeed = tmpls.filter(function(t) {
+      if (t.cat === 'favorite' && matchRepeat(t.repeat || 'daily')) return true;
+      if (t.cat === 'oneTime' && t.scheduledDate === toDay()) return true;
+      return false;
+    });
     return dIdx('instances', 'date', toDay()).then(function(todayInsts) {
       var existIds = todayInsts.map(function(i) { return i.templateId; });
       var p = Promise.resolve();
@@ -262,17 +317,11 @@ function seedToday() {
         if (existIds.indexOf(t.id) >= 0) return;
         p = p.then(function() {
           return dPut('instances', {
-            id: uid(),
-            templateId: t.id,
-            name: t.name,
-            type: t.type,
-            icon: t.icon || '📋',
-            date: toDay(),
+            id: uid(), templateId: t.id, name: t.name, cat: t.cat,
+            icon: t.icon || '📋', date: toDay(),
             items: t.items.map(function(it) { return {id: it.id, text: it.text, sortOrder: it.sortOrder, checked: false}; }),
-            isCompleted: false,
-            completedAt: null,
-            homeSortOrder: t.sortOrder || Date.now(),
-            createdAt: Date.now()
+            isCompleted: false, completedAt: null,
+            homeSortOrder: t.sortOrder || Date.now(), createdAt: Date.now()
           });
         });
       });
@@ -359,7 +408,7 @@ function renderHome() {
     var pct = totalItems > 0 ? Math.round(checkedItems / totalItems * 100) : 0;
 
     var scheduled = _tmpls.filter(function(t) {
-      return t.type === 'oneTime' && t.scheduledDate && t.scheduledDate >= toDay();
+      return t.cat === 'oneTime' && t.scheduledDate && t.scheduledDate >= toDay();
     }).sort(function(a, b) { return a.scheduledDate < b.scheduledDate ? -1 : 1; });
 
     var h = '<div class="dth"><h2>' + todayLbl() + '</h2><p>오늘 챙길 것들을 확인하세요</p></div>';
@@ -379,7 +428,7 @@ function renderHome() {
     }
 
     var onceCount = 0;
-    insts.forEach(function(inst) { if (inst.type === 'oneTime') onceCount++; });
+    insts.forEach(function(inst) { if (inst.cat === 'oneTime') onceCount++; });
 
     if (onceCount > 0) {
       h += '<div class="dcard" id="dcard-once" style="cursor:pointer"><div class="dcard-label">오늘 추가 준비물</div>' +
@@ -416,8 +465,8 @@ function renderHome() {
           var tot = inst.items.length;
           var dn = inst.items.filter(function(i) { return i.checked; }).length;
           var pc = tot > 0 ? Math.round(dn / tot * 100) : 0;
-          var tag = inst.type === 'fixed' ? '<span class="bdg bdg-fixed">고정</span>' : '<span class="bdg bdg-once">일회성</span>';
-          var cardCls = inst.type === 'oneTime' ? 'hcard once-card' : 'hcard';
+          var tag = inst.cat === 'favorite' ? '<span class="bdg bdg-fixed">⭐</span>' : '<span class="bdg bdg-once">일회성</span>';
+          var cardCls = inst.cat === 'oneTime' ? 'hcard once-card' : 'hcard';
           if (_homeEdit) {
             var chk = _homeChecked[inst.id] ? 'checked' : '';
             h += '<div class="' + cardCls + '" data-id="' + inst.id + '" style="display:flex;align-items:center;gap:10px;padding-left:10px">' +
@@ -614,15 +663,20 @@ function renderList() {
   }
 
   return dAll('templates').then(function(tmpls) {
-    var filtered = tmpls.filter(function(t) { return t.type === curSeg; }).sort(function(a, b) { return a.sortOrder - b.sortOrder; });
+    var filtered = tmpls.filter(function(t) { return t.cat === curSeg; }).sort(function(a, b) { return a.sortOrder - b.sortOrder; });
     if (!filtered.length) {
       el.innerHTML = '<div class="empty"><div class="empty-ico">' + ICONS.plusCircle + '</div><p>리스트가 없어요<br>+ 버튼으로 추가해보세요</p></div>';
     } else {
       var h = '<div style="text-align:center;padding:6px 0 2px;font-size:.68rem;color:var(--tx2)">길게 누르면 순서 변경</div><div class="lc">';
       filtered.forEach(function(t) {
-        var typeLabel = t.type === 'fixed' ? '매일 반복' : '일회성';
+        var repLabel = '';
+        if (t.cat === 'favorite') {
+          var ro = REPEAT_OPTS.filter(function(r) { return r.val === (t.repeat || 'daily'); })[0];
+          repLabel = ro ? ro.label : '매일';
+        } else if (t.cat === 'archive') { repLabel = '보관중'; }
+        else { repLabel = '일회성'; }
         var dday = '';
-        if (t.type === 'oneTime' && t.scheduledDate) {
+        if (t.cat === 'oneTime' && t.scheduledDate) {
           var diff = Math.ceil((new Date(t.scheduledDate) - new Date(toDay())) / 86400000);
           if (diff > 0) dday = ' · <span style="color:var(--pr);font-weight:700">D-' + diff + '</span>';
           else if (diff === 0) dday = ' · <span style="color:var(--dg);font-weight:700">오늘!</span>';
@@ -631,7 +685,7 @@ function renderList() {
         h += '<div class="tmpl-card" data-tid="' + t.id + '"><div class="tmpl-head"><h3>' + (t.icon || '📋') + ' ' + esc(t.name) + '</h3>' +
           '<div class="acts"><button class="ib etb" data-id="' + t.id + '">' + ic('pen') + '</button>' +
           '<button class="ib dtb" data-id="' + t.id + '">' + ic('trash') + '</button></div></div>' +
-          '<div class="tmpl-meta"><span style="color:var(--pr);font-weight:700">' + t.items.length + '개</span> 항목 · ' + typeLabel + dday + '</div></div>';
+          '<div class="tmpl-meta"><span style="color:var(--pr);font-weight:700">' + t.items.length + '개</span> 항목 · ' + repLabel + dday + '</div></div>';
       });
       el.innerHTML = h + '</div>';
     }
@@ -775,22 +829,29 @@ function collectAcItems() {
 function showTmplEditor(tmpl) {
   var isEdit = !!tmpl;
   var nm = tmpl ? tmpl.name : '';
-  var tp = tmpl ? tmpl.type : curSeg;
+  var ct = tmpl ? (tmpl.cat || 'favorite') : curSeg;
+  var rp = tmpl ? (tmpl.repeat || 'daily') : (curSeg === 'favorite' ? 'daily' : 'manual');
   var ico = tmpl ? (tmpl.icon || '📋') : '📋';
   var its = tmpl ? tmpl.items.map(function(i) { return i.text; }).join('\n') : '';
   var sd = tmpl ? (tmpl.scheduledDate || '') : '';
-  var showDate = tp === 'oneTime';
+  var showDate = ct === 'oneTime';
+  var showRepeat = ct === 'favorite';
 
   var iconHtml = ICON_PRESET.map(function(e) {
     return '<span class="ico-dot' + (e === ico ? ' on' : '') + '" data-ico="' + e + '">' + e + '</span>';
   }).join('');
 
+  var repeatHtml = REPEAT_OPTS.map(function(r) {
+    return '<option value="' + r.val + '" ' + (rp === r.val ? 'selected' : '') + '>' + r.label + '</option>';
+  }).join('');
+
   openSheet(
     '<div class="stl">' + (isEdit ? '리스트 수정' : '리스트 추가') + '</div>' +
     '<div style="display:flex;gap:8px;margin-bottom:12px"><div style="flex:1"><label class="fl">이름</label><input class="ti" id="eNm" value="' + esc(nm) + '" placeholder="예: 출근 준비"></div>' +
-    '<div style="flex:1"><label class="fl">타입</label><select class="sei" id="eTp" style="width:100%">' +
-    '<option value="fixed" ' + (tp === 'fixed' ? 'selected' : '') + '>고정</option>' +
-    '<option value="oneTime" ' + (tp === 'oneTime' ? 'selected' : '') + '>일회성</option></select></div></div>' +
+    '<div style="flex:1"><label class="fl">분류</label><select class="sei" id="eCat" style="width:100%">' +
+    '<option value="favorite" ' + (ct === 'favorite' ? 'selected' : '') + '>⭐ 즐겨찾기</option>' +
+    '<option value="oneTime" ' + (ct === 'oneTime' ? 'selected' : '') + '>일회성</option></select></div></div>' +
+    '<div class="fg" id="eRepWrap" style="display:' + (showRepeat ? 'block' : 'none') + ';margin-bottom:12px"><label class="fl">반복 주기</label><select class="sei" id="eRep" style="width:100%">' + repeatHtml + '</select></div>' +
     '<div class="fg" style="margin-bottom:12px"><label class="fl">아이콘</label><div id="icoPick" style="display:flex;flex-wrap:wrap;gap:6px">' + iconHtml + '</div></div>' +
     '<input type="hidden" id="eIco" value="' + ico + '">' +
     '<div class="fg" id="eDateWrap" style="display:' + (showDate ? 'block' : 'none') + '"><label class="fl">예약 날짜 (선택)</label>' +
@@ -804,8 +865,10 @@ function showTmplEditor(tmpl) {
     '<div style="height:8px"></div>'
   );
 
-  document.getElementById('eTp').addEventListener('change', function(e) {
-    document.getElementById('eDateWrap').style.display = e.target.value === 'oneTime' ? 'block' : 'none';
+  document.getElementById('eCat').addEventListener('change', function(e) {
+    var v = e.target.value;
+    document.getElementById('eDateWrap').style.display = v === 'oneTime' ? 'block' : 'none';
+    document.getElementById('eRepWrap').style.display = v === 'favorite' ? 'block' : 'none';
   });
 
   document.querySelectorAll('.ico-dot').forEach(function(d) {
@@ -869,7 +932,8 @@ function showTmplEditor(tmpl) {
 
   document.getElementById('eSave').addEventListener('click', function() {
     var nm2 = document.getElementById('eNm').value.trim();
-    var tp2 = document.getElementById('eTp').value;
+    var cat2 = document.getElementById('eCat').value;
+    var rep2 = cat2 === 'favorite' ? (document.getElementById('eRep').value || 'daily') : 'manual';
     var raw = document.getElementById('eIt').value.trim();
     var dateVal = document.getElementById('eDate').value || '';
     if (!nm2) { toast('이름을 입력해주세요', 3000); return; }
@@ -880,14 +944,14 @@ function showTmplEditor(tmpl) {
     var tplData = {
       id: isEdit ? tmpl.id : uid(),
       name: nm2,
-      type: tp2,
+      cat: cat2,
+      repeat: rep2,
       icon: ico2,
       items: its2,
       sortOrder: isEdit ? tmpl.sortOrder : Date.now(),
+      scheduledDate: cat2 === 'oneTime' ? dateVal : '',
       createdAt: isEdit ? tmpl.createdAt : Date.now()
     };
-    if (tp2 === 'oneTime') tplData.scheduledDate = dateVal;
-    else tplData.scheduledDate = '';
     dPut('templates', tplData).then(function() {
       closeSheetAndBack();
       toast(isEdit ? '저장됐습니다' : '추가됐습니다');
@@ -911,17 +975,11 @@ function addInst(tmplId) {
   return dGet('templates', tmplId).then(function(t) {
     if (!t) return;
     return dPut('instances', {
-      id: uid(),
-      templateId: t.id,
-      name: t.name,
-      type: t.type,
-      icon: t.icon || '📋',
-      date: toDay(),
+      id: uid(), templateId: t.id, name: t.name, cat: t.cat || 'favorite',
+      icon: t.icon || '📋', date: toDay(),
       items: t.items.map(function(it) { return {id: it.id, text: it.text, sortOrder: it.sortOrder, checked: false}; }),
-      isCompleted: false,
-      completedAt: null,
-      homeSortOrder: Date.now(),
-      createdAt: Date.now()
+      isCompleted: false, completedAt: null,
+      homeSortOrder: Date.now(), createdAt: Date.now()
     });
   });
 }
@@ -1329,15 +1387,15 @@ function showAddTodaySheet() {
       return;
     }
     return dIdx('instances', 'date', toDay()).then(function(todayInsts) {
-      var todayFixedIds = todayInsts.filter(function(i) { return i.type === 'fixed'; }).map(function(i) { return i.templateId; });
-      var avail = tmpls.filter(function(t) { return t.type === 'oneTime' || todayFixedIds.indexOf(t.id) < 0; });
+      var todayTplIds = todayInsts.map(function(i) { return i.templateId; });
+      var avail = tmpls.filter(function(t) { return t.cat !== 'archive' && todayTplIds.indexOf(t.id) < 0; });
       if (!avail.length) {
         toast('추가할 수 있는 리스트가 없어요', 3000);
         return;
       }
       var h = '<div class="stl">오늘 리스트에 추가</div>';
       avail.forEach(function(t) {
-        var tag = t.type === 'fixed' ? '<span class="bdg bdg-fixed">고정</span>' : '<span class="bdg bdg-once">일회성</span>';
+        var tag = t.cat === 'favorite' ? '<span class="bdg bdg-fixed">⭐</span>' : '<span class="bdg bdg-once">일회성</span>';
         h += '<div class="add-row" data-tid="' + t.id + '"><div class="add-row-info">' +
           '<div class="add-row-name">' + (t.icon || '📋') + ' ' + esc(t.name) + '</div>' +
           '<div class="add-row-sub">' + t.items.length + '개 항목</div></div>' + tag + '</div>';

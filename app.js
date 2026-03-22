@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.6.0';
+var APP_VERSION = 'v1.7.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -550,9 +550,21 @@ function renderList() {
           {label: '삭제', val: true, cls: 'bd2'}
         ]).then(function(ok) {
           if (ok) {
-            dDel('templates', btn.dataset.id).then(function() {
+            var delId = btn.dataset.id;
+            dDel('templates', delId).then(function() {
+              return dAll('instances');
+            }).then(function(allInst) {
+              var p = Promise.resolve();
+              allInst.forEach(function(inst) {
+                if (inst.templateId === delId) {
+                  p = p.then(function() { return dDel('instances', inst.id); });
+                }
+              });
+              return p;
+            }).then(function() {
               toast('삭제됐습니다');
               renderList();
+              if (curTab === 'home') renderHome();
             });
           }
         });
@@ -631,15 +643,15 @@ function showTmplEditor(tmpl) {
 
   openSheet(
     '<div class="stl">' + (isEdit ? '리스트 수정' : '리스트 추가') + '</div>' +
-    '<div class="fg"><label class="fl">리스트 이름</label><input class="ti" id="eNm" value="' + esc(nm) + '" placeholder="예: 출근 준비"></div>' +
-    '<div class="fg"><label class="fl">타입</label><select class="sei" id="eTp">' +
-    '<option value="fixed" ' + (tp === 'fixed' ? 'selected' : '') + '>고정 (매일 반복)</option>' +
-    '<option value="oneTime" ' + (tp === 'oneTime' ? 'selected' : '') + '>일회성 (특정 상황)</option></select></div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:16px"><div style="flex:1"><label class="fl">이름</label><input class="ti" id="eNm" value="' + esc(nm) + '" placeholder="예: 출근 준비"></div>' +
+    '<div style="flex:1"><label class="fl">타입</label><select class="sei" id="eTp" style="width:100%">' +
+    '<option value="fixed" ' + (tp === 'fixed' ? 'selected' : '') + '>고정</option>' +
+    '<option value="oneTime" ' + (tp === 'oneTime' ? 'selected' : '') + '>일회성</option></select></div></div>' +
     '<div class="fg" id="eDateWrap" style="display:' + (showDate ? 'block' : 'none') + '"><label class="fl">예약 날짜 (선택)</label>' +
     '<input type="date" class="ti" id="eDate" value="' + sd + '">' +
     '<p class="hint">비워두면 수동 추가, 날짜 지정하면 해당일에 자동 표시</p></div>' +
-    '<div class="fg"><label class="fl">항목 목록</label><div class="ia"><textarea id="eIt" placeholder="항목을 한 줄씩 입력하세요&#10;예:&#10;휴대폰&#10;지갑&#10;차키">' + esc(its) + '</textarea></div>' +
-    '<p class="hint">한 줄 = 하나의 항목. 줄바꿈으로 여러 항목을 입력할 수 있어요.</p></div>' +
+    '<div class="fg" style="flex:1"><label class="fl">항목 목록</label><div class="ia"><textarea id="eIt" style="min-height:180px" placeholder="항목을 한 줄씩 입력하세요&#10;예:&#10;휴대폰&#10;지갑&#10;차키">' + esc(its) + '</textarea></div>' +
+    '<p class="hint">한 줄 = 하나의 항목</p></div>' +
     '<button class="btn btp" id="eSave">' + (isEdit ? '저장' : '추가') + '</button>' +
     (isEdit ? '<button class="btn bte" id="eAddToday" style="margin-top:8px">오늘에 추가</button>' : '') +
     '<div style="height:8px"></div>'
@@ -1154,20 +1166,6 @@ function bindEvents() {
       history.back();
     }
   });
-
-  var _sheetY = 0;
-  var ms = document.getElementById('ms');
-  ms.addEventListener('touchstart', function(e) {
-    _sheetY = e.touches[0].clientY;
-  }, {passive: true});
-  ms.addEventListener('touchend', function(e) {
-    var dy = e.changedTouches[0].clientY - _sheetY;
-    if (dy > 80) {
-      closeSheet();
-      _skipPop = true;
-      history.back();
-    }
-  }, {passive: true});
 
   document.getElementById('csbk').addEventListener('click', function() {
     closeCheckAndBack();

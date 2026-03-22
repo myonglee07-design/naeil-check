@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.11.0';
+var APP_VERSION = 'v1.11.1';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -408,7 +408,7 @@ function renderHome() {
       if (pending.length) {
         pending.sort(function(a, b) { return (a.homeSortOrder || 0) - (b.homeSortOrder || 0); });
         if (_homeEdit) {
-          h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--pr);font-weight:700">편집 모드</span><div style="display:flex;gap:8px"><button class="btn-sm bd2" id="heDelBtn">선택 삭제</button><button class="btn-sm btp" id="heDoneBtn">완료</button></div></div><div class="lc">';
+          h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--pr);font-weight:700">편집 모드</span><div style="display:flex;gap:8px"><button class="btn-sm bd2" id="heDelBtn">선택 삭제</button><button class="btn-sm btp" id="heDoneBtn">완료</button></div></div><div style="text-align:center;padding:2px 0 6px;font-size:.65rem;color:var(--tx2)">길게 누르면 순서 변경 · 체크하면 삭제</div><div class="lc">';
         } else {
           h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center"><span style="border-bottom:2px solid var(--pr);padding-bottom:2px">미완료</span><span style="font-size:.65rem;font-weight:500;color:var(--tx2);text-transform:none;letter-spacing:0">길게 누르면 편집</span></div><div class="lc">';
         }
@@ -458,17 +458,25 @@ function renderHome() {
       });
 
       var _heDragId = null;
+      var _heLpTimer = null;
       var _heStartY = 0;
       el.querySelectorAll('.hcard[data-id]').forEach(function(card) {
         card.addEventListener('touchstart', function(e) {
           if (e.target.type === 'checkbox') return;
-          _heDragId = card.dataset.id;
           _heStartY = e.touches[0].clientY;
-          card.classList.add('ci-drag');
-          if (navigator.vibrate) navigator.vibrate(15);
+          var cid = card.dataset.id;
+          _heLpTimer = setTimeout(function() {
+            _heLpTimer = null;
+            _heDragId = cid;
+            card.classList.add('ci-drag');
+            if (navigator.vibrate) navigator.vibrate(40);
+          }, 300);
         }, {passive: true});
 
         card.addEventListener('touchmove', function(e) {
+          if (_heLpTimer && Math.abs(e.touches[0].clientY - _heStartY) > 10) {
+            clearTimeout(_heLpTimer); _heLpTimer = null;
+          }
           if (!_heDragId || card.dataset.id !== _heDragId) return;
           var curY = e.touches[0].clientY;
           var cards = el.querySelectorAll('.hcard[data-id]');
@@ -484,6 +492,7 @@ function renderHome() {
         }, {passive: true});
 
         card.addEventListener('touchend', function() {
+          if (_heLpTimer) { clearTimeout(_heLpTimer); _heLpTimer = null; }
           if (_heDragId) {
             _heDragId = null;
             renderHome();

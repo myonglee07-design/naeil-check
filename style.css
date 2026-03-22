@@ -799,6 +799,25 @@ html, body {
 .bgdot.on { border-color: var(--tx); transform: scale(1.15); }
 .bgdot.on::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--sf); }
 
+.ico-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  font-size: 1.3rem;
+  border-radius: 10px;
+  border: 2px solid var(--bd);
+  cursor: pointer;
+  transition: border-color .15s, transform .15s;
+}
+
+.ico-dot.on {
+  border-color: var(--pr);
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px var(--prl);
+}
+
 .ci-drag {
   opacity: .85;
   background: var(--prl);

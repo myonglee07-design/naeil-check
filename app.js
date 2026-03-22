@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.8.0';
+var APP_VERSION = 'v1.9.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -21,17 +21,19 @@ var ICONS = {
   arrowDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6,9 12,15 18,9"/></svg>'
 };
 
+var ICON_PRESET = ['📋','💼','💊','👶','🎒','🏫','✈️','🏥','🛒','🏛️','🔧','🏋️','🎣','⛺','🐕','📦','🎉','🧹','✏️','🚗'];
+
 var DEFAULT_TMPLS = [
-  {name:'출근 준비', type:'fixed', items:['출근복','사원증 / 출입증','칫솔 / 치약','텀블러','충전 케이블 / 어댑터','이어폰','보조배터리','휴대폰','지갑','집키 / 차키','우산']},
-  {name:'차량 점검', type:'fixed', items:['운전면허증','스마트키','타이어','계기판 경고등','연료','거치대','차량용 충전 케이블','하이패스 카드','차량 서류']},
-  {name:'아이 외출 준비', type:'fixed', items:['물','간식','휴지 / 물티슈','손수건','여벌 옷','손소독제','상비약 / 밴드','장난감','겉옷','모자','아이 신발']},
-  {name:'고등학생 등교', type:'fixed', items:['교과서 / 참고서','필기구','태블릿 / 스마트패드','보조배터리','교복 / 체육복','물통','휴대폰','학생증','교통카드','우산']},
-  {name:'유치원 등원', type:'fixed', items:['여벌 옷 / 양말','알림장','물통','간식','휴지 / 물티슈','손수건','유치원 가방','겉옷','아이 신발']},
-  {name:'여행 준비', type:'oneTime', items:['신분증 / 여권','항공권 / 교통편 예약정보','숙소 예약정보','휴대폰','충전 케이블 / 보조배터리','지갑 / 카드','현금','옷 / 속옷 / 양말','세면도구','상비약','자외선차단제','우산','현관문 잠금','가스밸브']},
-  {name:'병원 방문', type:'oneTime', items:['신분증','모바일 건강보험증','예약 정보','진료 관련 서류','처방전 / 복용 중인 약','결제 수단','휴대폰','보조배터리','물','간식']},
-  {name:'장보기 / 마트', type:'oneTime', items:['장보기 목록','장바구니 / 에코백','쿠폰 / 멤버십','결제 수단','휴대폰']},
-  {name:'공공기관 / 은행', type:'oneTime', items:['신분증','신청 서류 원본','발급번호 / 예약번호','도장','통장 / 카드','휴대폰','필기구']},
-  {name:'현장 근무', type:'fixed', items:['작업복','안전모','안전화','작업장갑','안전 조끼','마스크','보온병 / 물','수건','충전 케이블 / 보조배터리','휴대폰','지갑','신분증 / 출입증']}
+  {name:'출근 준비', type:'fixed', icon:'💼', items:['출근복','사원증 / 출입증','칫솔 / 치약','텀블러','충전 케이블 / 어댑터','이어폰','보조배터리','휴대폰','지갑','집키 / 차키','우산']},
+  {name:'약 먹기', type:'fixed', icon:'💊', items:['아침 약','점심 약','저녁 약','물','약 보관함']},
+  {name:'아이 외출 준비', type:'fixed', icon:'👶', items:['물','간식','휴지 / 물티슈','손수건','여벌 옷','손소독제','상비약 / 밴드','장난감','겉옷','모자','아이 신발']},
+  {name:'고등학생 등교', type:'fixed', icon:'🎒', items:['교과서 / 참고서','필기구','태블릿 / 스마트패드','보조배터리','교복 / 체육복','물통','휴대폰','학생증','교통카드','우산']},
+  {name:'유치원 등원', type:'fixed', icon:'🏫', items:['여벌 옷 / 양말','알림장','물통','간식','휴지 / 물티슈','손수건','유치원 가방','겉옷','아이 신발']},
+  {name:'여행 준비', type:'oneTime', icon:'✈️', items:['신분증 / 여권','항공권 / 교통편 예약정보','숙소 예약정보','휴대폰','충전 케이블 / 보조배터리','지갑 / 카드','현금','옷 / 속옷 / 양말','세면도구','상비약','자외선차단제','우산','현관문 잠금','가스밸브']},
+  {name:'병원 방문', type:'oneTime', icon:'🏥', items:['신분증','모바일 건강보험증','예약 정보','진료 관련 서류','처방전 / 복용 중인 약','결제 수단','휴대폰','보조배터리','물','간식']},
+  {name:'장보기 / 마트', type:'oneTime', icon:'🛒', items:['장보기 목록','장바구니 / 에코백','쿠폰 / 멤버십','결제 수단','휴대폰']},
+  {name:'공공기관 / 은행', type:'oneTime', icon:'🏛️', items:['신분증','신청 서류 원본','발급번호 / 예약번호','도장','통장 / 카드','휴대폰','필기구']},
+  {name:'현장 근무', type:'fixed', icon:'🔧', items:['작업복','안전모','안전화','작업장갑','안전 조끼','마스크','보온병 / 물','수건','충전 케이블 / 보조배터리','휴대폰','지갑','신분증 / 출입증']}
 ];
 
 var LIGHT_COLORS = ['#3B82F6','#10B981','#7C3AED','#F59E0B','#EC4899','#EF4444','#1E293B'];
@@ -235,6 +237,7 @@ function seedDefaults() {
           id: uid(),
           name: t.name,
           type: t.type,
+          icon: t.icon || '📋',
           items: t.items.map(function(tx, j) { return {id: uid(), text: tx, sortOrder: j}; }),
           sortOrder: i,
           createdAt: Date.now()
@@ -261,6 +264,7 @@ function seedToday() {
             templateId: t.id,
             name: t.name,
             type: t.type,
+            icon: t.icon || '📋',
             date: toDay(),
             items: t.items.map(function(it) { return {id: it.id, text: it.text, sortOrder: it.sortOrder, checked: false}; }),
             isCompleted: false,
@@ -407,7 +411,7 @@ function renderHome() {
           var tag = inst.type === 'fixed' ? '<span class="bdg bdg-fixed">고정</span>' : '<span class="bdg bdg-once">일회성</span>';
           var cardCls = inst.type === 'oneTime' ? 'hcard once-card' : 'hcard';
           h += '<div class="' + cardCls + '" data-id="' + inst.id + '">' +
-            '<div class="hcard-head"><h3>' + esc(inst.name) + '</h3>' + tag + '</div>' +
+            '<div class="hcard-head"><h3>' + (inst.icon || '📋') + ' ' + esc(inst.name) + '</h3>' + tag + '</div>' +
             '<div class="hcard-meta">' + dn + '/' + tot + ' 완료</div>' +
             '<div class="pbar"><div class="pfill" style="width:' + pc + '%"></div></div></div>';
         });
@@ -419,7 +423,7 @@ function renderHome() {
           '<div id="doneList" style="display:none"><div class="lc">';
         done.forEach(function(inst) {
           h += '<div class="hcard done" data-id="' + inst.id + '">' +
-            '<div class="hcard-head"><h3>' + esc(inst.name) + '</h3><span class="bdg bdg-done">완료</span></div>' +
+            '<div class="hcard-head"><h3>' + (inst.icon || '📋') + ' ' + esc(inst.name) + '</h3><span class="bdg bdg-done">완료</span></div>' +
             '<div class="hcard-meta">' + inst.items.length + '/' + inst.items.length + ' 완료</div>' +
             '<div class="pbar"><div class="pfill" style="width:100%"></div></div></div>';
         });
@@ -501,7 +505,7 @@ function renderList() {
       } else {
         var h = '<div class="lc">';
         arch.forEach(function(i) {
-          h += '<div class="arch-card"><div class="arch-head"><h3>' + esc(i.name) + '</h3><span class="bdg bdg-done">완료</span></div>' +
+          h += '<div class="arch-card"><div class="arch-head"><h3>' + (i.icon || '📋') + ' ' + esc(i.name) + '</h3><span class="bdg bdg-done">완료</span></div>' +
             '<div class="arch-meta">' + fmtDate(i.completedAt) + ' · ' + i.items.length + '개 항목</div></div>';
         });
         el.innerHTML = h + '</div>';
@@ -525,7 +529,7 @@ function renderList() {
           else if (diff === 0) dday = ' · <span style="color:var(--dg);font-weight:700">오늘!</span>';
           else dday = ' · <span style="color:var(--tx2)">지남</span>';
         }
-        h += '<div class="tmpl-card" data-tid="' + t.id + '"><div class="tmpl-head"><h3>' + esc(t.name) + '</h3>' +
+        h += '<div class="tmpl-card" data-tid="' + t.id + '"><div class="tmpl-head"><h3>' + (t.icon || '📋') + ' ' + esc(t.name) + '</h3>' +
           '<div class="acts"><button class="ib etb" data-id="' + t.id + '">' + ic('pen') + '</button>' +
           '<button class="ib dtb" data-id="' + t.id + '">' + ic('trash') + '</button></div></div>' +
           '<div class="tmpl-meta"><span style="color:var(--pr);font-weight:700">' + t.items.length + '개</span> 항목 · ' + typeLabel + dday + '</div></div>';
@@ -650,16 +654,23 @@ function showTmplEditor(tmpl) {
   var isEdit = !!tmpl;
   var nm = tmpl ? tmpl.name : '';
   var tp = tmpl ? tmpl.type : curSeg;
+  var ico = tmpl ? (tmpl.icon || '📋') : '📋';
   var its = tmpl ? tmpl.items.map(function(i) { return i.text; }).join('\n') : '';
   var sd = tmpl ? (tmpl.scheduledDate || '') : '';
   var showDate = tp === 'oneTime';
 
+  var iconHtml = ICON_PRESET.map(function(e) {
+    return '<span class="ico-dot' + (e === ico ? ' on' : '') + '" data-ico="' + e + '">' + e + '</span>';
+  }).join('');
+
   openSheet(
     '<div class="stl">' + (isEdit ? '리스트 수정' : '리스트 추가') + '</div>' +
-    '<div style="display:flex;gap:8px;margin-bottom:16px"><div style="flex:1"><label class="fl">이름</label><input class="ti" id="eNm" value="' + esc(nm) + '" placeholder="예: 출근 준비"></div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:12px"><div style="flex:1"><label class="fl">이름</label><input class="ti" id="eNm" value="' + esc(nm) + '" placeholder="예: 출근 준비"></div>' +
     '<div style="flex:1"><label class="fl">타입</label><select class="sei" id="eTp" style="width:100%">' +
     '<option value="fixed" ' + (tp === 'fixed' ? 'selected' : '') + '>고정</option>' +
     '<option value="oneTime" ' + (tp === 'oneTime' ? 'selected' : '') + '>일회성</option></select></div></div>' +
+    '<div class="fg" style="margin-bottom:12px"><label class="fl">아이콘</label><div id="icoPick" style="display:flex;flex-wrap:wrap;gap:6px">' + iconHtml + '</div></div>' +
+    '<input type="hidden" id="eIco" value="' + ico + '">' +
     '<div class="fg" id="eDateWrap" style="display:' + (showDate ? 'block' : 'none') + '"><label class="fl">예약 날짜 (선택)</label>' +
     '<input type="date" class="ti" id="eDate" value="' + sd + '">' +
     '<p class="hint">비워두면 수동 추가, 날짜 지정하면 해당일에 자동 표시</p></div>' +
@@ -673,6 +684,14 @@ function showTmplEditor(tmpl) {
 
   document.getElementById('eTp').addEventListener('change', function(e) {
     document.getElementById('eDateWrap').style.display = e.target.value === 'oneTime' ? 'block' : 'none';
+  });
+
+  document.querySelectorAll('.ico-dot').forEach(function(d) {
+    d.addEventListener('click', function() {
+      document.querySelectorAll('.ico-dot').forEach(function(x) { x.classList.remove('on'); });
+      d.classList.add('on');
+      document.getElementById('eIco').value = d.dataset.ico;
+    });
   });
 
   if (cfg.autoComplete) {
@@ -735,10 +754,12 @@ function showTmplEditor(tmpl) {
     if (!raw) { toast('항목을 입력해주세요', 3000); return; }
     var its2 = raw.split('\n').map(function(s) { return s.trim(); }).filter(Boolean)
       .map(function(tx, i) { return {id: uid(), text: tx, sortOrder: i}; });
+    var ico2 = document.getElementById('eIco').value || '📋';
     var tplData = {
       id: isEdit ? tmpl.id : uid(),
       name: nm2,
       type: tp2,
+      icon: ico2,
       items: its2,
       sortOrder: isEdit ? tmpl.sortOrder : Date.now(),
       createdAt: isEdit ? tmpl.createdAt : Date.now()
@@ -772,6 +793,7 @@ function addInst(tmplId) {
       templateId: t.id,
       name: t.name,
       type: t.type,
+      icon: t.icon || '📋',
       date: toDay(),
       items: t.items.map(function(it) { return {id: it.id, text: it.text, sortOrder: it.sortOrder, checked: false}; }),
       isCompleted: false,
@@ -783,7 +805,7 @@ function addInst(tmplId) {
 
 function openCheck(inst) {
   curInst = inst;
-  document.getElementById('cstl').textContent = inst.name;
+  document.getElementById('cstl').textContent = (inst.icon || '📋') + ' ' + inst.name;
   document.getElementById('cs').classList.add('on');
   history.pushState({layer: 'check'}, '');
   drawCheck();
@@ -1191,7 +1213,7 @@ function showAddTodaySheet() {
       avail.forEach(function(t) {
         var tag = t.type === 'fixed' ? '<span class="bdg bdg-fixed">고정</span>' : '<span class="bdg bdg-once">일회성</span>';
         h += '<div class="add-row" data-tid="' + t.id + '"><div class="add-row-info">' +
-          '<div class="add-row-name">' + esc(t.name) + '</div>' +
+          '<div class="add-row-name">' + (t.icon || '📋') + ' ' + esc(t.name) + '</div>' +
           '<div class="add-row-sub">' + t.items.length + '개 항목</div></div>' + tag + '</div>';
       });
       h += '<div style="height:4px"></div>';

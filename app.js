@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.10.1';
+var APP_VERSION = 'v1.10.2';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -1414,3 +1414,8 @@ function boot() {
 }
 
 document.addEventListener('DOMContentLoaded', boot);
+
+document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+document.addEventListener('touchstart', function(e) {
+  if (e.touches.length > 1) e.preventDefault();
+}, {passive: false});

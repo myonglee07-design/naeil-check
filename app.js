@@ -1,4 +1,4 @@
-var APP_VERSION = 'v2.0.0';
+var APP_VERSION = 'v2.1.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -457,7 +457,7 @@ function renderHome() {
       if (pending.length) {
         pending.sort(function(a, b) { return (a.homeSortOrder || 0) - (b.homeSortOrder || 0); });
         if (_homeEdit) {
-          h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--pr);font-weight:700">편집 모드</span><div style="display:flex;gap:8px"><button class="btn-sm bd2" id="heDelBtn">선택 삭제</button><button class="btn-sm btp" id="heDoneBtn">완료</button></div></div><div style="text-align:center;padding:2px 0 6px;font-size:.65rem;color:var(--tx2)">길게 누르면 순서 변경 · 체크하면 삭제</div><div class="lc">';
+          h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--pr);font-weight:700">편집 모드</span><div style="display:flex;gap:6px"><button class="btn-sm" id="heArchBtn" style="background:var(--tx2);color:#fff">보관함</button><button class="btn-sm bd2" id="heDelBtn">삭제</button><button class="btn-sm btp" id="heDoneBtn">완료</button></div></div><div style="text-align:center;padding:2px 0 6px;font-size:.65rem;color:var(--tx2)">길게 누르면 순서 변경 · 체크 후 삭제/보관</div><div class="lc">';
         } else {
           h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center"><span style="border-bottom:2px solid var(--pr);padding-bottom:2px">미완료</span><span style="font-size:.65rem;font-weight:500;color:var(--tx2);text-transform:none;letter-spacing:0">길게 누르면 편집</span></div><div class="lc">';
         }
@@ -527,6 +527,7 @@ function renderHome() {
             clearTimeout(_heLpTimer); _heLpTimer = null;
           }
           if (!_heDragId || card.dataset.id !== _heDragId) return;
+          e.preventDefault();
           var curY = e.touches[0].clientY;
           var cards = el.querySelectorAll('.hcard[data-id]');
           for (var i = 0; i < cards.length; i++) {
@@ -538,7 +539,7 @@ function renderHome() {
               return;
             }
           }
-        }, {passive: true});
+        }, {passive: false});
 
         card.addEventListener('touchend', function() {
           if (_heLpTimer) { clearTimeout(_heLpTimer); _heLpTimer = null; }
@@ -575,6 +576,40 @@ function renderHome() {
         _homeEdit = false;
         _homeChecked = {};
         renderHome();
+      });
+
+      var archBtn = document.getElementById('heArchBtn');
+      if (archBtn) archBtn.addEventListener('click', function() {
+        var ids = Object.keys(_homeChecked);
+        if (!ids.length) { toast('보관할 항목을 선택해주세요'); return; }
+        dlg('보관함 이동', ids.length + '개 리스트의 원본을 보관함으로 이동할까요?', [
+          {label: '취소', val: false, cls: 'bc'},
+          {label: '이동', val: true, cls: 'btp'}
+        ]).then(function(ok) {
+          if (ok) {
+            var p = Promise.resolve();
+            ids.forEach(function(instId) {
+              p = p.then(function() {
+                return dGet('instances', instId);
+              }).then(function(inst) {
+                if (!inst) return;
+                return dGet('templates', inst.templateId);
+              }).then(function(tmpl) {
+                if (!tmpl) return;
+                tmpl.cat = 'archive';
+                return dPut('templates', tmpl);
+              }).then(function() {
+                return dDel('instances', instId);
+              });
+            });
+            p.then(function() {
+              _homeChecked = {};
+              _homeEdit = false;
+              toast(ids.length + '개가 보관함으로 이동됐습니다');
+              renderHome();
+            });
+          }
+        });
       });
 
     } else {
@@ -646,18 +681,57 @@ function renderList() {
   var el = document.getElementById('lcnt');
 
   if (curSeg === 'archive') {
-    return dAll('instances').then(function(insts) {
-      var arch = insts.filter(function(i) { return i.isCompleted; }).sort(function(a, b) { return b.completedAt - a.completedAt; });
-      if (!arch.length) {
-        el.innerHTML = '<div class="empty"><div class="empty-ico">' + ICONS.archive + '</div><p>완료된 리스트가 없어요</p></div>';
-      } else {
-        var h = '<div class="lc">';
-        arch.forEach(function(i) {
+    return Promise.all([dAll('templates'), dAll('instances')]).then(function(results) {
+      var archTmpls = results[0].filter(function(t) { return t.cat === 'archive'; });
+      var archInsts = results[1].filter(function(i) { return i.isCompleted; }).sort(function(a, b) { return b.completedAt - a.completedAt; });
+      if (!archTmpls.length && !archInsts.length) {
+        el.innerHTML = '<div class="empty"><div class="empty-ico">' + ICONS.archive + '</div><p>보관함이 비어있어요</p></div>';
+        updateFab();
+        return;
+      }
+      var h = '';
+      if (archTmpls.length) {
+        h += '<div class="stn">보관된 리스트</div><div class="lc">';
+        archTmpls.forEach(function(t) {
+          h += '<div class="tmpl-card" data-aid="' + t.id + '" style="cursor:pointer"><div class="tmpl-head"><h3>' + (t.icon || '📋') + ' ' + esc(t.name) + '</h3>' +
+            '<span class="bdg" style="background:var(--tx2);color:#fff;font-size:.6rem">보관</span></div>' +
+            '<div class="tmpl-meta"><span style="color:var(--pr);font-weight:700">' + t.items.length + '개</span> 항목</div></div>';
+        });
+        h += '</div>';
+      }
+      if (archInsts.length) {
+        h += '<div class="stn">완료 기록</div><div class="lc">';
+        archInsts.forEach(function(i) {
           h += '<div class="arch-card"><div class="arch-head"><h3>' + (i.icon || '📋') + ' ' + esc(i.name) + '</h3><span class="bdg bdg-done">완료</span></div>' +
             '<div class="arch-meta">' + fmtDate(i.completedAt) + ' · ' + i.items.length + '개 항목</div></div>';
         });
-        el.innerHTML = h + '</div>';
+        h += '</div>';
       }
+      el.innerHTML = h;
+
+      el.querySelectorAll('[data-aid]').forEach(function(card) {
+        card.addEventListener('click', function() {
+          var tid = card.dataset.aid;
+          dlg('리스트 복원', '어디로 복원할까요?', [
+            {label: '취소', val: null, cls: 'bc'},
+            {label: '⭐ 즐겨찾기', val: 'favorite', cls: 'btp'},
+            {label: '일회성', val: 'oneTime', cls: 'bte'}
+          ]).then(function(cat) {
+            if (!cat) return;
+            dGet('templates', tid).then(function(t) {
+              if (!t) return;
+              t.cat = cat;
+              if (cat === 'favorite' && !t.repeat) t.repeat = 'daily';
+              if (cat === 'oneTime') t.repeat = 'manual';
+              return dPut('templates', t);
+            }).then(function() {
+              toast('복원됐습니다');
+              renderList();
+            });
+          });
+        });
+      });
+
       updateFab();
     });
   }

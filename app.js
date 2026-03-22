@@ -1,4 +1,4 @@
-var APP_VERSION = 'v2.1.1';
+var APP_VERSION = 'v2.2.0';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -259,7 +259,7 @@ function seedDefaults() {
       p = p.then(function() {
         return dPut('templates', {
           id: uid(), name: t.name, cat: t.cat, repeat: t.repeat,
-          icon: t.icon || '📋', scheduledDate: '',
+          icon: t.icon || '📋', scheduledDate: '', homeActive: true,
           items: t.items.map(function(tx, j) { return {id: uid(), text: tx, sortOrder: j}; }),
           sortOrder: i, createdAt: Date.now()
         });
@@ -271,16 +271,25 @@ function seedDefaults() {
 
 function migrateV2(tmpls) {
   var need = false;
-  tmpls.forEach(function(t) { if (t.type && !t.cat) need = true; });
+  tmpls.forEach(function(t) {
+    if (t.type && !t.cat) need = true;
+    if (t.homeActive === undefined) need = true;
+  });
   if (!need) return Promise.resolve();
   var p = Promise.resolve();
   tmpls.forEach(function(t) {
+    var changed = false;
     if (t.type && !t.cat) {
       t.cat = t.type === 'fixed' ? 'favorite' : 'oneTime';
       t.repeat = t.type === 'fixed' ? 'daily' : 'manual';
       delete t.type;
-      p = p.then(function() { return dPut('templates', t); });
+      changed = true;
     }
+    if (t.homeActive === undefined) {
+      t.homeActive = true;
+      changed = true;
+    }
+    if (changed) p = p.then(function() { return dPut('templates', t); });
   });
   return p.then(function() { return dAll('instances'); }).then(function(insts) {
     var q = Promise.resolve();
@@ -306,7 +315,7 @@ function matchRepeat(repeat) {
 function seedToday() {
   return dAll('templates').then(function(tmpls) {
     var autoSeed = tmpls.filter(function(t) {
-      if (t.cat === 'favorite' && matchRepeat(t.repeat || 'daily')) return true;
+      if (t.cat === 'favorite' && t.homeActive !== false && matchRepeat(t.repeat || 'daily')) return true;
       if (t.cat === 'oneTime' && t.scheduledDate === toDay()) return true;
       return false;
     });
@@ -457,7 +466,7 @@ function renderHome() {
       if (pending.length) {
         pending.sort(function(a, b) { return (a.homeSortOrder || 0) - (b.homeSortOrder || 0); });
         if (_homeEdit) {
-          h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--pr);font-weight:700">편집 모드</span><div style="display:flex;gap:6px"><button class="btn-sm" id="heArchBtn" style="background:var(--tx2);color:#fff">보관함</button><button class="btn-sm bd2" id="heDelBtn">삭제</button><button class="btn-sm btp" id="heDoneBtn">완료</button></div></div><div style="text-align:center;padding:2px 0 6px;font-size:.65rem;color:var(--tx2)">길게 누르면 순서 변경 · 체크 후 삭제/보관</div><div class="lc">';
+          h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--pr);font-weight:700">편집 모드</span><div style="display:flex;gap:6px"><button class="btn-sm" id="heOffBtn" style="background:#64748B;color:#fff">⭐ 끄기</button><button class="btn-sm" id="heArchBtn" style="background:var(--tx2);color:#fff">보관함</button><button class="btn-sm btp" id="heDoneBtn">완료</button></div></div><div style="text-align:center;padding:2px 0 6px;font-size:.65rem;color:var(--tx2)">길게 누르면 순서 변경 · 체크 후 제거/보관</div><div class="lc">';
         } else {
           h += '<div class="stn" style="display:flex;justify-content:space-between;align-items:center"><span style="border-bottom:2px solid var(--pr);padding-bottom:2px">미완료</span><span style="font-size:.65rem;font-weight:500;color:var(--tx2);text-transform:none;letter-spacing:0">길게 누르면 편집</span></div><div class="lc">';
         }
@@ -562,23 +571,36 @@ function renderHome() {
         }, {passive: true});
       });
 
-      var delBtn = document.getElementById('heDelBtn');
-      if (delBtn) delBtn.addEventListener('click', function() {
+      var offBtn = document.getElementById('heOffBtn');
+      if (offBtn) offBtn.addEventListener('click', function() {
         var ids = Object.keys(_homeChecked);
-        if (!ids.length) { toast('삭제할 항목을 선택해주세요'); return; }
-        dlg('선택 삭제', ids.length + '개 리스트를 삭제할까요?', [
+        if (!ids.length) { toast('항목을 선택해주세요'); return; }
+        dlg('홈에서 제거', ids.length + '개 리스트를 홈에서 제거할까요?\n즐겨찾기 탭에서 다시 켤 수 있어요.', [
           {label: '취소', val: false, cls: 'bc'},
-          {label: '삭제', val: true, cls: 'bd2'}
+          {label: '제거', val: true, cls: 'btp'}
         ]).then(function(ok) {
           if (ok) {
             var p = Promise.resolve();
-            ids.forEach(function(id) { p = p.then(function() { return dDel('instances', id); }); });
+            ids.forEach(function(instId) {
+              p = p.then(function() {
+                return dGet('instances', instId);
+              }).then(function(inst) {
+                if (!inst) return;
+                return dGet('templates', inst.templateId);
+              }).then(function(tmpl) {
+                if (!tmpl) return;
+                tmpl.homeActive = false;
+                return dPut('templates', tmpl);
+              }).then(function() {
+                return dDel('instances', instId);
+              });
+            });
             p.then(function() {
               _homeChecked = {};
               _homeEdit = false;
               _skipPop = true;
               history.back();
-              toast(ids.length + '개 삭제됐습니다');
+              toast('홈에서 제거됐습니다');
               renderHome();
             });
           }
@@ -775,13 +797,32 @@ function renderList() {
           else if (diff === 0) dday = ' · <span style="color:var(--dg);font-weight:700">오늘!</span>';
           else dday = ' · <span style="color:var(--tx2)">지남</span>';
         }
+        var starBtn = '';
+        if (t.cat === 'favorite') {
+          var starCls = t.homeActive !== false ? 'star-on' : 'star-off';
+          starBtn = '<button class="ib stb ' + starCls + '" data-id="' + t.id + '" style="font-size:1.2rem;line-height:1">' + (t.homeActive !== false ? '⭐' : '☆') + '</button>';
+        }
         h += '<div class="tmpl-card" data-tid="' + t.id + '"><div class="tmpl-head"><h3>' + (t.icon || '📋') + ' ' + esc(t.name) + '</h3>' +
-          '<div class="acts"><button class="ib etb" data-id="' + t.id + '">' + ic('pen') + '</button>' +
+          '<div class="acts">' + starBtn + '<button class="ib etb" data-id="' + t.id + '">' + ic('pen') + '</button>' +
           '<button class="ib dtb" data-id="' + t.id + '">' + ic('trash') + '</button></div></div>' +
           '<div class="tmpl-meta"><span style="color:var(--pr);font-weight:700">' + t.items.length + '개</span> 항목 · ' + repLabel + dday + '</div></div>';
       });
       el.innerHTML = h + '</div>';
     }
+
+    el.querySelectorAll('.stb').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        dGet('templates', btn.dataset.id).then(function(t) {
+          if (!t) return;
+          t.homeActive = !t.homeActive;
+          return dPut('templates', t);
+        }).then(function() {
+          toast(btn.classList.contains('star-on') ? '홈에서 제거됐습니다' : '홈에 다시 표시됩니다');
+          renderList();
+        });
+      });
+    });
 
     el.querySelectorAll('.etb').forEach(function(btn) {
       btn.addEventListener('click', function(e) {

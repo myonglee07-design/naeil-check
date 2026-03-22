@@ -537,6 +537,9 @@ html, body {
   overflow: hidden;
 }
 
+.star-off { opacity: .4; }
+.stb { background: none; border: none; padding: 2px; }
+
 .tmpl-head { display: flex; align-items: center; padding: 14px 16px; gap: 10px; }
 .tmpl-head h3 { flex: 1; font-size: .95rem; font-weight: 700; }
 .tmpl-head .acts { display: flex; gap: 2px; }

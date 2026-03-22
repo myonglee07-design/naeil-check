@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.7.0';
+var APP_VERSION = 'v1.7.1';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -49,7 +49,7 @@ var _lpTimer = null;
 var swX = 0;
 var swY = 0;
 var _skipPop = false;
-var cfg = {theme: 'light', fontSize: 'md', pointColor: '#3B82F6', bgColor: '', archiveDays: 30};
+var cfg = {theme: 'light', fontSize: 'md', pointColor: '#EF4444', bgColor: '', archiveDays: 30};
 
 function ic(name) {
   return '<span style="display:inline-flex;width:1.1rem;height:1.1rem;align-items:center;flex-shrink:0">' + (ICONS[name] || '') + '</span>';
@@ -1076,7 +1076,7 @@ function resetAll(seed) {
     results[2].forEach(function(s) { p = p.then(function() { return dDel('settings', s.key); }); });
     return p;
   }).then(function() {
-    cfg = {theme: 'light', fontSize: 'md', pointColor: '#3B82F6', bgColor: '', archiveDays: 30};
+    cfg = {theme: 'light', fontSize: 'md', pointColor: '#EF4444', bgColor: '', archiveDays: 30};
     applyCfg();
     if (seed) return seedDefaults();
   });

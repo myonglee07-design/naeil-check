@@ -1,4 +1,4 @@
-var APP_VERSION = 'v2.1.0';
+var APP_VERSION = 'v2.1.1';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -499,6 +499,18 @@ function renderHome() {
     el.innerHTML = h;
 
     if (_homeEdit) {
+      el.querySelectorAll('.hcard[data-id]').forEach(function(card) {
+        card.addEventListener('click', function(e) {
+          if (e.target.closest('.he-chk')) return;
+          var chk = card.querySelector('.he-chk');
+          if (chk) {
+            chk.checked = !chk.checked;
+            if (chk.checked) _homeChecked[chk.dataset.id] = true;
+            else delete _homeChecked[chk.dataset.id];
+          }
+        });
+      });
+
       el.querySelectorAll('.he-chk').forEach(function(chk) {
         chk.addEventListener('change', function() {
           if (chk.checked) _homeChecked[chk.dataset.id] = true;
@@ -564,6 +576,8 @@ function renderHome() {
             p.then(function() {
               _homeChecked = {};
               _homeEdit = false;
+              _skipPop = true;
+              history.back();
               toast(ids.length + '개 삭제됐습니다');
               renderHome();
             });
@@ -575,6 +589,8 @@ function renderHome() {
       if (doneBtn) doneBtn.addEventListener('click', function() {
         _homeEdit = false;
         _homeChecked = {};
+        _skipPop = true;
+        history.back();
         renderHome();
       });
 
@@ -605,6 +621,8 @@ function renderHome() {
             p.then(function() {
               _homeChecked = {};
               _homeEdit = false;
+              _skipPop = true;
+              history.back();
               toast(ids.length + '개가 보관함으로 이동됐습니다');
               renderHome();
             });
@@ -629,6 +647,7 @@ function renderHome() {
             if (navigator.vibrate) navigator.vibrate(40);
             _homeEdit = true;
             _homeChecked = {};
+            history.pushState({layer: 'homeEdit'}, '');
             renderHome();
           }, 450);
         }, {passive: true});
@@ -1571,6 +1590,7 @@ function bindEvents() {
     if (_skipPop) { _skipPop = false; return; }
     if (isDlgOpen()) { closeDlg(); return; }
     if (isSheetOpen()) { closeSheet(); return; }
+    if (_homeEdit) { _homeEdit = false; _homeChecked = {}; renderHome(); return; }
     if (isCheckOpen()) { closeCheck(); return; }
     if (curTab !== 'home') { switchTab('home', true); return; }
   });

@@ -1,4 +1,4 @@
-var APP_VERSION = 'v1.10.0';
+var APP_VERSION = 'v1.10.1';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -579,6 +579,13 @@ function renderList() {
     var _tDragId = null;
     var _tStartY = 0;
     el.querySelectorAll('.tmpl-card[data-tid]').forEach(function(card) {
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', function(e) {
+        if (e.target.closest('.etb') || e.target.closest('.dtb') || _tDragId) return;
+        dGet('templates', card.dataset.tid).then(function(t) {
+          if (t) showTmplEditor(t);
+        });
+      });
       card.addEventListener('touchstart', function(e) {
         _tStartY = e.touches[0].clientY;
         var tid = card.dataset.tid;

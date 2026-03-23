@@ -1,4 +1,4 @@
-var APP_VERSION = 'v2.3.0';
+var APP_VERSION = 'v2.3.1';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -1143,8 +1143,23 @@ function showTmplEditor(tmpl) {
     var dateVal = document.getElementById('eDate').value || '';
     if (!nm2) { toast('이름을 입력해주세요', 3000); return; }
     if (!raw) { toast('항목을 입력해주세요', 3000); return; }
-    var its2 = raw.split('\n').map(function(s) { return s.trim(); }).filter(Boolean)
-      .map(function(tx, i) { return {id: uid(), text: tx, sortOrder: i}; });
+    var lines = raw.split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
+    var its2;
+    if (isEdit) {
+      var oldItems = tmpl.items || [];
+      var oldByText = {};
+      oldItems.forEach(function(oi) { if (!oldByText[oi.text]) oldByText[oi.text] = oi; });
+      its2 = lines.map(function(tx, i) {
+        if (oldByText[tx]) {
+          var kept = oldByText[tx];
+          delete oldByText[tx];
+          return {id: kept.id, text: tx, sortOrder: i};
+        }
+        return {id: uid(), text: tx, sortOrder: i};
+      });
+    } else {
+      its2 = lines.map(function(tx, i) { return {id: uid(), text: tx, sortOrder: i}; });
+    }
     var ico2 = document.getElementById('eIco').value || '📋';
     var tplData = {
       id: isEdit ? tmpl.id : uid(),
@@ -1158,6 +1173,8 @@ function showTmplEditor(tmpl) {
       createdAt: isEdit ? tmpl.createdAt : Date.now()
     };
     dPut('templates', tplData).then(function() {
+      if (isEdit) return syncInstances(tplData);
+    }).then(function() {
       closeSheetAndBack();
       toast(isEdit ? '저장됐습니다' : '추가됐습니다');
       renderList();
@@ -1174,6 +1191,45 @@ function showTmplEditor(tmpl) {
       });
     });
   }
+}
+
+function syncInstances(tplData) {
+  return dAll('instances').then(function(allInst) {
+    var todayStr = toDay();
+    var targets = allInst.filter(function(inst) {
+      return inst.templateId === tplData.id && inst.date === todayStr && !inst.isCompleted;
+    });
+    if (!targets.length) return Promise.resolve();
+    var p = Promise.resolve();
+    targets.forEach(function(inst) {
+      inst.name = tplData.name;
+      inst.icon = tplData.icon;
+      inst.cat = tplData.cat;
+      var oldMap = {};
+      inst.items.forEach(function(it) { oldMap[it.id] = it; });
+      var newItems = [];
+      tplData.items.forEach(function(tItem) {
+        if (oldMap[tItem.id]) {
+          newItems.push({
+            id: tItem.id,
+            text: tItem.text,
+            sortOrder: tItem.sortOrder,
+            checked: oldMap[tItem.id].checked
+          });
+        } else {
+          newItems.push({
+            id: tItem.id,
+            text: tItem.text,
+            sortOrder: tItem.sortOrder,
+            checked: false
+          });
+        }
+      });
+      inst.items = newItems;
+      p = p.then(function() { return dPut('instances', inst); });
+    });
+    return p;
+  });
 }
 
 function addInst(tmplId) {

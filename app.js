@@ -1,4 +1,4 @@
-var APP_VERSION = 'v2.3.1';
+var APP_VERSION = 'v2.3.2';
 var DB_NAME = 'naeilcheck';
 var DB_VER = 1;
 
@@ -1806,7 +1806,7 @@ window.addEventListener('beforeinstallprompt', function(e) {
 
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').then(function(reg) {
+    navigator.serviceWorker.register('./sw.js', {updateViaCache: 'none'}).then(function(reg) {
       reg.addEventListener('updatefound', function() {
         var nw = reg.installing;
         if (nw) {
